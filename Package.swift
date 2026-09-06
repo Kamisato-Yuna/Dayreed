@@ -23,7 +23,7 @@ let package = Package(
         .target(name: "DayreedCapture", dependencies: ["DayreedCore"]),
         .target(name: "DayreedAgent", dependencies: ["DayreedCore"]),
         .target(name: "DayreedAnalysis", dependencies: ["DayreedCore"]),
-        .executableTarget(name: "DayreedApp", dependencies: ["DayreedCore", "DayreedCapture", "DayreedUpdate"],
+        .executableTarget(name: "DayreedApp", dependencies: ["DayreedCore", "DayreedCapture", "DayreedAnalysis", "DayreedUpdate"],
                           linkerSettings: [.unsafeFlags(["-Xlinker", "-rpath", "-Xlinker", "@executable_path/../Frameworks"])]),
         .executableTarget(name: "DayreedCLI", dependencies: ["DayreedCore", "DayreedAgent"]),
         .testTarget(name: "DayreedCoreTests", dependencies: ["DayreedCore"]),

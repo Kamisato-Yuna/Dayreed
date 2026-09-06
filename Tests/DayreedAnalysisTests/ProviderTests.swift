@@ -167,3 +167,39 @@ func providerURLsCannotPersistSecretsOrUseRemotePlainHTTP(_ url: String) throws 
     #expect(output.first?.recordID == record.id)
     #expect(output.first?.title == "合成CLI")
 }
+
+
+private final class RetryRemovalCredentials: ProviderCredentialStore, @unchecked Sendable {
+    private let lock = NSLock()
+    private var value: String? = "SYNTHETIC_KEY"
+    private var failNextRemoval = true
+    func read(for providerID: UUID) throws -> String? { lock.withLock { value } }
+    func write(_ value: String?, for providerID: UUID) throws {
+        try lock.withLock {
+            if value == nil && failNextRemoval {
+                failNextRemoval = false
+                throw AnalysisError.credentials
+            }
+            self.value = value
+        }
+    }
+}
+
+@Test func credentialRemovalFailureKeepsConfigurationVisibleForRetry() throws {
+    let fixture = try AnalysisFixture(); defer { fixture.cleanup() }
+    let credentials = RetryRemovalCredentials()
+    let settings = ProviderSettingsService(store: fixture.store, credentials: credentials)
+    let configuration = ProviderConfiguration(name: "Synthetic", kind: .openAICompatible, model: "synthetic",
+        endpoint: URL(string: "https://example.invalid/v1/chat/completions"))
+    try settings.save(configuration)
+    try settings.select(id: configuration.id)
+    let previousRevision = try fixture.store.analysisContext().revision
+    #expect(throws: AnalysisError.credentials) { try settings.remove(id: configuration.id) }
+    #expect(try settings.configurations().contains { $0.id == configuration.id })
+    #expect(try credentials.read(for: configuration.id) == "SYNTHETIC_KEY")
+    #expect(try fixture.store.analysisContext().revision > previousRevision)
+    try settings.remove(id: configuration.id)
+    #expect(try settings.configurations().isEmpty)
+    #expect(try credentials.read(for: configuration.id) == nil)
+    #expect(try fixture.store.analysisContext().selectedProviderID == nil)
+}

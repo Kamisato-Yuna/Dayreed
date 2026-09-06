@@ -5,7 +5,7 @@
 
 个人工作记录与回顾工具，面向 macOS 26。用原生界面检查时间线、日报和周报，通过本地 CLI/MCP 向本人使用的 Agent 提供记录。
 
-**目前处于全新开发阶段，尚无正式可用版本。** 已提供原生导航与设置外壳、App 打包入口和 CLI 版本/能力查询；采集、持久化、报告、MCP、正式 VI 与自动更新尚未接入。界面不显示虚构记录，CLI 会明确报告未实现的能力。
+**1.0 正在开发与验收，尚无正式 Release。** 已实现独立多源采集、SQLite 证据存储、原生回顾界面、可编辑日报周报和只读 CLI/MCP；正式图标由 Icon Composer 分层制作，更新与签名分发工具仅面向本仓库。已接入 OpenAI 兼容接口及 Codex/Claude CLI 分析 Provider，自动分析需单独开启。真实权限、选定 Provider、公证和安装更新验收尚未全部完成。
 
 ## 产品方向
 
@@ -18,7 +18,7 @@
 
 ## 开发
 
-需要 macOS 26+、Xcode 26+（Swift 6.2+），并将命令行工具指向相应 Xcode。
+需要 macOS 26+、支持 Icon Composer 的 Xcode 26+（Swift 6.2+），并将命令行工具指向相应 Xcode。
 
 ```sh
 swift build
@@ -32,6 +32,10 @@ GUI 应通过生成的 `build/debug/Dayreed.app` 启动，避免直接运行 Swi
 ```text
 Sources/DayreedApp/    原生 App、页面与设置
 Sources/DayreedCore/   App 与 CLI 共享的本地能力
+Sources/DayreedCapture/ 独立截图与计算机历史采集
+Sources/DayreedAnalysis/ 用户选定 Provider 与自动分析
+Sources/DayreedAgent/  只读查询与 stdio MCP
+Sources/DayreedUpdate/ 本仓库签名更新
 Sources/DayreedCLI/    命令行入口
 Tests/                有关本轮实现的测试
 script/               构建、运行与公证工具
@@ -40,8 +44,17 @@ docs/                 对外使用和维护文档
 
 临时计划、实验、验收记录放入被忽略的 `docs/local/`；Agent 配置、构建产物和凭据也不进入 Git。旧 Dayflow 仓库已退役，仅作参考；此仓库使用独立历史、身份和目录，不自动访问或迁移旧应用数据。
 
+## 使用说明
+
+- [App 回顾与设置](docs/APP_GUIDE.md)
+- [采集、隐私与本地存储](docs/CAPTURE_AND_STORAGE.md)
+- [时间线与可编辑报告](docs/REPORTS_AND_QUERY.md)
+- [分析 Provider 配置](docs/ANALYSIS_PROVIDERS.md)
+- [CLI 安装与 MCP 配置](docs/AGENT.md)
+- [Icon Composer 图标源与编译](Resources/Branding/README.md)
+
 ## 参与与发布
 
 由 [@Kamisato-Yuna](https://github.com/Kamisato-Yuna) 个人维护。请先阅读 [贡献指南](CONTRIBUTING.md)、[安全说明](SECURITY.md)和[发布说明](docs/RELEASING.md)。功能计划通过 Issues 和 1.0 milestone 管理。
 
-代码使用 [MIT License](LICENSE)。今后如引入第三方代码或资源，保留相应版权和许可说明。
+代码使用 [MIT License](LICENSE)。Sparkle 使用其独立许可，分发包保留相应版权和许可说明。

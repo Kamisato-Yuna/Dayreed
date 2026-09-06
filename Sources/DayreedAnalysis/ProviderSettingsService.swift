@@ -54,8 +54,11 @@ public struct ProviderSettingsService: Sendable {
     public func save(_ configuration: ProviderConfiguration) throws { try store.saveProviderConfiguration(configuration) }
     public func select(id: UUID?) throws { try store.selectProvider(id: id) }
     public func remove(id: UUID) throws {
-        try store.removeProviderConfiguration(id: id)
+        // Keep the configuration available for retry if Keychain refuses deletion. Removing the
+        // database row first would hide an orphaned credential from the Settings interface.
+        try store.invalidatePendingAnalysis()
         try credentials.write(nil, for: id)
+        try store.removeProviderConfiguration(id: id)
     }
     /// Call only for a key explicitly supplied in Dayreed Settings. Never probes environment keys.
     public func setAPIKey(_ value: String?, for id: UUID) throws {
