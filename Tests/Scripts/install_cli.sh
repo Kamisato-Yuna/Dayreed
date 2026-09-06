@@ -23,7 +23,11 @@ import sys
 
 with open(sys.argv[1], "wb") as plist_file:
     plistlib.dump(
-        {"CFBundleIdentifier": "YunaBuild.Dayreed"},
+        {
+            "CFBundleIdentifier": "YunaBuild.Dayreed",
+            "CFBundleShortVersionString": "1.0.0",
+            "CFBundleVersion": "1",
+        },
         plist_file,
         fmt=plistlib.FMT_XML,
     )
@@ -46,6 +50,18 @@ help_output="$($installer --help)"
 [[ "$help_output" == *"install_cli.sh install"* ]]
 [[ "$help_output" == *"~/.local/bin"* ]]
 
+missing_uninstall_dir="${test_root}/missing uninstall"
+"$installer" uninstall --app "$app_path" --bin-dir "$missing_uninstall_dir"
+[[ ! -e "$missing_uninstall_dir" ]]
+
+invalid_app_path="${test_root}/Invalid Dayreed.app"
+invalid_app_bin_dir="${test_root}/invalid app bin"
+if "$installer" install --app "$invalid_app_path" --bin-dir "$invalid_app_bin_dir"; then
+  printf '%s\n' 'invalid App was not rejected' >&2
+  exit 1
+fi
+[[ ! -e "$invalid_app_bin_dir" ]]
+
 "$installer" install --app "$app_path" --bin-dir "$bin_dir"
 link_path="$bin_dir/dayreed"
 [[ -L "$link_path" ]]
@@ -54,6 +70,24 @@ link_path="$bin_dir/dayreed"
 
 "$installer" install --app "$app_path" --bin-dir "$bin_dir"
 [[ -L "$link_path" ]]
+
+version_mismatch_bin_dir="${test_root}/version mismatch"
+/usr/libexec/PlistBuddy -c 'Set :CFBundleShortVersionString 9.9.9' "$app_path/Contents/Info.plist"
+if "$installer" install --app "$app_path" --bin-dir "$version_mismatch_bin_dir"; then
+  printf '%s\n' 'version mismatch was not rejected' >&2
+  exit 1
+fi
+[[ ! -e "$version_mismatch_bin_dir" ]]
+/usr/libexec/PlistBuddy -c 'Set :CFBundleShortVersionString 1.0.0' "$app_path/Contents/Info.plist"
+
+build_mismatch_bin_dir="${test_root}/build mismatch"
+/usr/libexec/PlistBuddy -c 'Set :CFBundleVersion 2' "$app_path/Contents/Info.plist"
+if "$installer" install --app "$app_path" --bin-dir "$build_mismatch_bin_dir"; then
+  printf '%s\n' 'build mismatch was not rejected' >&2
+  exit 1
+fi
+[[ ! -e "$build_mismatch_bin_dir" ]]
+/usr/libexec/PlistBuddy -c 'Set :CFBundleVersion 1' "$app_path/Contents/Info.plist"
 
 regular_bin_dir="${test_root}/regular conflict"
 mkdir -p "$regular_bin_dir"

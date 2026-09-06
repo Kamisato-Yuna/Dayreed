@@ -41,7 +41,6 @@ validate_bin_dir() {
   if [[ "$bin_dir" == "/usr/local" || "$bin_dir" == /usr/local/* ]]; then
     error "禁止安装到 /usr/local 下：${bin_dir}"
   fi
-  mkdir -p "$bin_dir"
 }
 
 validate_app() {
@@ -67,6 +66,16 @@ validate_app() {
     error "Bundle ID 不匹配：${bundle_id}（期望 ${APP_BUNDLE_ID}）"
   fi
 
+  local plist_version
+  if ! plist_version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$info_plist" 2>/dev/null)"; then
+    error "无法读取 CFBundleShortVersionString：${info_plist}"
+  fi
+
+  local plist_build
+  if ! plist_build="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$info_plist" 2>/dev/null)"; then
+    error "无法读取 CFBundleVersion：${info_plist}"
+  fi
+
   local helper_path="${app_path}/${HELPER_RELATIVE_PATH}"
   if [[ ! -f "$helper_path" ]]; then
     error "未找到 Helper：${helper_path}"
@@ -80,9 +89,8 @@ validate_app() {
     error "无法执行 Helper 的 version --json：${helper_path}"
   fi
 
-  if ! python3 - "$version_json" "$APP_BUNDLE_ID" <<'PY'
+  if ! python3 - "$version_json" "$APP_BUNDLE_ID" "$plist_version" "$plist_build" <<'PY'
 import json
-import os
 import sys
 
 payload = json.loads(sys.argv[1])
@@ -96,6 +104,15 @@ if payload.get("bundleIdentifier") != sys.argv[2]:
 
 if not isinstance(payload.get("build"), int):
     raise SystemExit("version --json 的 build 类型必须是整数")
+
+if not isinstance(payload.get("version"), str):
+    raise SystemExit("version --json 的 version 类型必须是字符串")
+
+if payload.get("version") != sys.argv[3]:
+    raise SystemExit("version --json 的 version 与 App 不匹配")
+
+if str(payload.get("build")) != sys.argv[4]:
+    raise SystemExit("version --json 的 build 与 App 不匹配")
 
 if payload.get("minimumSystemVersion") != "26.0":
     raise SystemExit("minimumSystemVersion 解析失败")
@@ -209,6 +226,10 @@ main() {
   validate_bin_dir "$bin_dir"
   validate_app "$app_path"
   app_path="$(resolve_path "$app_path")"
+
+  if [[ "$mode" == "install" ]]; then
+    mkdir -p "$bin_dir"
+  fi
 
   case "$mode" in
     install) install_cli "$app_path" "$bin_dir" ;;
