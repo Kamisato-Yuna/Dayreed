@@ -10,10 +10,10 @@ public enum DayreedStoreError: Error, Equatable, Sendable {
 /// raw evidence as BLOBs so record/evidence insertion and deletion cannot leave orphan files.
 public final class DayreedStore: @unchecked Sendable {
     public enum Access: Sendable { case readWrite, readOnly }
-    private let connection: OpaquePointer
-    private let lock = NSLock()
+    let connection: OpaquePointer
+    let lock = NSLock()
     private let access: Access
-    private static let schemaVersion: Int32 = 1
+    private static let schemaVersion: Int32 = 2
     private static let transient = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
 
     public init(directory: URL, access: Access = .readWrite) throws {
@@ -66,7 +66,7 @@ public final class DayreedStore: @unchecked Sendable {
             sqlite3_busy_timeout(handle, 2_000)
             try execute("PRAGMA foreign_keys=ON")
             let version = try scalarInt("PRAGMA user_version")
-            guard version == Self.schemaVersion || (version == 0 && access == .readWrite) else {
+            guard version == Self.schemaVersion || ((0...1).contains(version) && access == .readWrite) else {
                 throw DayreedStoreError.unsupportedSchema
             }
             if access == .readWrite {
@@ -96,6 +96,7 @@ public final class DayreedStore: @unchecked Sendable {
                             """)
                     }
                 }
+                if version < 2 { try migrateAnalysisSchema() }
             } else {
                 try execute("PRAGMA query_only=ON")
             }
@@ -204,7 +205,7 @@ public final class DayreedStore: @unchecked Sendable {
         }
     }
 
-    /// Deletes raw evidence in the same transaction. Future derived tables should use record FKs.
+    /// Deletes evidence and associated derived report bodies in the same transaction.
     @discardableResult
     public func deleteRecords(in interval: DateInterval) throws -> Int {
         try lock.withLock {
@@ -251,7 +252,7 @@ public final class DayreedStore: @unchecked Sendable {
         }
     }
 
-    private func evidenceReferences(recordID: UUID) throws -> [EvidenceReference] {
+    func evidenceReferences(recordID: UUID) throws -> [EvidenceReference] {
         try statement("SELECT id, kind, length(content) FROM evidence WHERE record_id=? ORDER BY kind") { statement in
             try bind(recordID.uuidString, at: 1, to: statement)
             var references: [EvidenceReference] = []
@@ -266,17 +267,17 @@ public final class DayreedStore: @unchecked Sendable {
         }
     }
 
-    private func requireWrite() throws {
+    func requireWrite() throws {
         guard access == .readWrite else { throw DayreedStoreError.readOnly }
     }
 
-    private func validate(_ interval: DateInterval) throws {
+    func validate(_ interval: DateInterval) throws {
         guard interval.start.timeIntervalSince1970.isFinite, interval.end.timeIntervalSince1970.isFinite else {
             throw DayreedStoreError.invalidRecord
         }
     }
 
-    private func transaction<T>(_ body: () throws -> T) throws -> T {
+    func transaction<T>(_ body: () throws -> T) throws -> T {
         try execute("BEGIN IMMEDIATE")
         do {
             let result = try body()
@@ -288,9 +289,9 @@ public final class DayreedStore: @unchecked Sendable {
         }
     }
 
-    private func execute(_ sql: String) throws { try check(sqlite3_exec(connection, sql, nil, nil, nil)) }
+    func execute(_ sql: String) throws { try check(sqlite3_exec(connection, sql, nil, nil, nil)) }
 
-    private func statement<T>(_ sql: String, _ body: (OpaquePointer) throws -> T) throws -> T {
+    func statement<T>(_ sql: String, _ body: (OpaquePointer) throws -> T) throws -> T {
         var statement: OpaquePointer?
         try check(sqlite3_prepare_v2(connection, sql, -1, &statement, nil))
         guard let statement else { throw DayreedStoreError.database(SQLITE_ERROR) }
@@ -298,30 +299,30 @@ public final class DayreedStore: @unchecked Sendable {
         return try body(statement)
     }
 
-    private func scalarInt(_ sql: String) throws -> Int32 {
+    func scalarInt(_ sql: String) throws -> Int32 {
         try statement(sql) { statement in
             guard try stepRow(statement) else { throw DayreedStoreError.database(SQLITE_ERROR) }
             return sqlite3_column_int(statement, 0)
         }
     }
 
-    private func check(_ status: Int32) throws {
+    func check(_ status: Int32) throws {
         guard status == SQLITE_OK else { throw DayreedStoreError.database(status) }
     }
 
-    private func stepDone(_ statement: OpaquePointer) throws {
+    func stepDone(_ statement: OpaquePointer) throws {
         let status = sqlite3_step(statement)
         guard status == SQLITE_DONE else { throw DayreedStoreError.database(status) }
     }
 
-    private func stepRow(_ statement: OpaquePointer) throws -> Bool {
+    func stepRow(_ statement: OpaquePointer) throws -> Bool {
         let status = sqlite3_step(statement)
         if status == SQLITE_ROW { return true }
         if status == SQLITE_DONE { return false }
         throw DayreedStoreError.database(status)
     }
 
-    private func bind(_ value: String?, at index: Int32, to statement: OpaquePointer) throws {
+    func bind(_ value: String?, at index: Int32, to statement: OpaquePointer) throws {
         if let value {
             try value.withCString { pointer in
                 try check(sqlite3_bind_text(statement, index, pointer, Int32(value.utf8.count), Self.transient))
@@ -331,25 +332,25 @@ public final class DayreedStore: @unchecked Sendable {
         }
     }
 
-    private func bind(_ value: Data, at index: Int32, to statement: OpaquePointer) throws {
+    func bind(_ value: Data, at index: Int32, to statement: OpaquePointer) throws {
         try value.withUnsafeBytes { bytes in
             try check(sqlite3_bind_blob(statement, index, bytes.baseAddress, Int32(bytes.count), Self.transient))
         }
     }
 
-    private func bind(_ interval: DateInterval, to statement: OpaquePointer) throws {
+    func bind(_ interval: DateInterval, to statement: OpaquePointer) throws {
         try check(sqlite3_bind_double(statement, 1, interval.start.timeIntervalSince1970))
         try check(sqlite3_bind_double(statement, 2, interval.end.timeIntervalSince1970))
     }
 
-    private func string(_ statement: OpaquePointer, _ index: Int32) -> String? {
+    func string(_ statement: OpaquePointer, _ index: Int32) -> String? {
         guard sqlite3_column_type(statement, index) != SQLITE_NULL,
               let bytes = sqlite3_column_text(statement, index) else { return nil }
         let buffer = UnsafeBufferPointer(start: bytes, count: Int(sqlite3_column_bytes(statement, index)))
         return String(decoding: buffer, as: UTF8.self)
     }
 
-    private func data(_ statement: OpaquePointer, _ index: Int32) -> Data {
+    func data(_ statement: OpaquePointer, _ index: Int32) -> Data {
         guard let bytes = sqlite3_column_blob(statement, index) else { return Data() }
         return Data(bytes: bytes, count: Int(sqlite3_column_bytes(statement, index)))
     }
