@@ -7,6 +7,9 @@ struct ReviewView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            if section == .timeline, let live = store.service as? LiveReviewService, let analysis = live.analysis {
+                AnalysisStatusView(service: live, review: store, analysis: analysis)
+            }
             if let failure = store.failure {
                 StatusBanner(text: failure, symbol: "exclamationmark.triangle")
             } else if let message = store.message {

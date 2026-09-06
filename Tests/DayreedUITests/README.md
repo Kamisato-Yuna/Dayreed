@@ -8,4 +8,6 @@
 
 `Tests/DayreedUITests/test_live_services.sh` 编译并检查正式 App 的真实采集适配器。只使用独立 UserDefaults suite、临时数据库与注入的合成操作系统环境；覆盖初始隐私、来源映射、设置持久化、暂停晚到结果、完整分页、删除级联和日常启动恢复。不会请求实际系统权限、采集桌面或读取用户记录。
 
-`Tests/DayreedUITests/build_live_preview.sh` 生成 `build/live-preview/DayreedLivePreview.app`，用于真实适配器的 GUI 验收。它生成专用截图、标题和 AX 合成证据，使用临时数据库与独立设置域；模拟权限按钮不会操作 TCC，采集操作不会读取真实桌面，退出时清理测试目录。`DAYREED_TEST_BIN_DIR` 可指定刚编译的模块目录以跳过重复构建。
+`Tests/DayreedUITests/build_live_preview.sh` 生成 `build/live-preview/DayreedLivePreview.app`，用于真实适配器的 GUI 验收。它生成专用截图、标题和 AX 合成证据，使用临时数据库与独立设置域；模拟权限按钮不会操作 TCC，采集操作不会读取真实桌面，退出时清理测试目录。脚本在临时目录显式编译真实 Core、Capture、Analysis 和 Update 模块，不依赖 SwiftPM automatic library 的产物布局。
+
+Provider 检查注入内存凭据和合成 Provider，覆盖保存/选定、来源过滤、暂停与全关晚到结果、默认关闭的当天自动分析、配置失败、退出取消及表单验证。LivePreview 同样注入这些替身，不能调用真实 HTTP/CLI Provider。

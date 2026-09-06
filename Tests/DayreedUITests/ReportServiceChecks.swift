@@ -70,7 +70,7 @@ extension LiveServiceChecks {
         expect(emptyDeletion.count == 0 && emptyDeletion.reportCount == 1 && !emptyDeletion.isEmpty)
         try await service.delete(emptyDeletion)
         expect(try await service.load(emptyQuery).report == nil)
-        service.control(.stop)
+        try await service.control(.stop)
         print("PASS: empty-day manual report; duplicate create conflict; candidate review and replacement conflict; grouped real timeline; atomic correction; report needs-review; weekly bounds; deletion erases reports/candidates including source-free manual reports")
     }
 }

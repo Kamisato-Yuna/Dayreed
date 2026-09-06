@@ -16,16 +16,16 @@ struct CaptureControlView: View {
                 Text("运行表示采样调度已启用；权限和下方各来源质量决定实际获得的内容。").font(.caption).foregroundStyle(.secondary)
                 if coordinator.state.storageFailed { Text("本地写入或清理失败，请检查磁盘空间后重试。").foregroundStyle(.red) }
                 HStack {
-                    Button("开始") { service.control(.start) }.disabled(coordinator.state.mode != .stopped)
-                    Button("暂停") { service.control(.pause) }.disabled([.stopped, .paused].contains(coordinator.state.mode))
-                    Button("继续") { service.control(.resume) }.disabled(coordinator.state.mode != .paused)
-                    Button("停止") { service.control(.stop) }.disabled(coordinator.state.mode == .stopped)
-                }.disabled(working || service.deletionInProgress)
+                    Button("开始") { control(.start) }.disabled(coordinator.state.mode != .stopped)
+                    Button("暂停") { control(.pause) }.disabled([.stopped, .paused].contains(coordinator.state.mode))
+                    Button("继续") { control(.resume) }.disabled(coordinator.state.mode != .paused)
+                    Button("停止") { control(.stop) }.disabled(coordinator.state.mode == .stopped)
+                }.disabled(working || service.deletionInProgress || service.isTransitioning)
                 LabeledContent("屏幕录制权限", value: permission(coordinator.state.permissions.screenRecording))
-                Button("申请屏幕录制权限") { service.control(.screenPermission) }
+                Button("申请屏幕录制权限") { control(.screenPermission) }
                 LabeledContent("辅助功能权限", value: permission(coordinator.state.permissions.accessibility))
-                Button("申请辅助功能权限") { service.control(.accessibilityPermission) }
-                Button("刷新权限状态") { service.control(.refreshPermissions) }
+                Button("申请辅助功能权限") { control(.accessibilityPermission) }
+                Button("刷新权限状态") { control(.refreshPermissions) }
                 Text("权限申请只由对应按钮触发。授予屏幕录制权限后，系统可能要求重新打开应用。").font(.caption).foregroundStyle(.secondary)
                 LabeledContent("最近截图", value: quality(coordinator.state.qualities.screenshot))
                 LabeledContent("最近应用历史", value: quality(coordinator.state.qualities.application))
@@ -64,6 +64,15 @@ struct CaptureControlView: View {
             if let deletion {
                 Text("\(deletion.interval.start.formatted(date: .complete, time: .omitted))，共 \(deletion.summary)，包括关联证据。此操作不可撤销。")
             }
+        }
+    }
+
+    private func control(_ action: CaptureAction) {
+        working = true
+        Task {
+            defer { working = false }
+            do { try await service.control(action) }
+            catch { message = "采集控制未完全完成，请查看状态后重试。" }
         }
     }
 

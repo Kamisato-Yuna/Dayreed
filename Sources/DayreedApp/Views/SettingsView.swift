@@ -133,6 +133,11 @@ struct SettingsView: View {
         }
     }
     @ViewBuilder private var provider: some View {
+        if let live = store.service as? LiveReviewService, let analysis = live.analysis {
+            ProviderSettingsView(service: live, analysis: analysis)
+        } else { providerFallback }
+    }
+    @ViewBuilder private var providerFallback: some View {
         Section("分析服务") {
             if store.draft.providers.isEmpty {
                 Text("尚未配置 Provider").font(.headline)

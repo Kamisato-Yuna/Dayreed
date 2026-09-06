@@ -29,10 +29,10 @@ import Foundation
         expect(records.count == 1 && records[0].evidence.count == 1 && records[0].evidence[0].kind == .windowTitle)
         let snapshot = try await service.load(ReviewQuery(date: .now))
         expect(!snapshot.events[0].summary.contains("SECRET") && !snapshot.events[0].evidence[0].label.contains("SECRET"))
-        service.control(.pause)
+        try await service.control(.pause)
         await capture.captureNow()
         expect(try database.records(in: ReviewQuery(date: .now).interval).records.count == 1)
-        service.control(.resume)
+        try await service.control(.resume)
         environment.active = false
         environment.handler?(.locked)
         expect(capture.state.mode == .suspended)
@@ -40,8 +40,8 @@ import Foundation
         expect(try database.records(in: ReviewQuery(date: .now).interval).records.count == 1)
         environment.active = true
         environment.handler?(.unlocked)
-        service.control(.screenPermission)
-        service.control(.accessibilityPermission)
+        try await service.control(.screenPermission)
+        try await service.control(.accessibilityPermission)
         expect(environment.requests == 2)
         preferences.sources[0].enabled = true
         preferences.sources[1].enabled = false
@@ -49,7 +49,7 @@ import Foundation
         environment.delay = true
         let sample = Task { await capture.captureNow() }
         while environment.pending == nil { await Task.yield() }
-        service.control(.pause)
+        try await service.control(.pause)
         environment.pending!.resume(returning: ScreenshotSample(pngData: Data([1]), quality: .available))
         await sample.value
         expect(try database.records(in: ReviewQuery(date: .now).interval).records.count == 1)
@@ -67,14 +67,14 @@ import Foundation
         try await service.delete(deletion)
         expect(try await service.load(ReviewQuery(date: now)).events.isEmpty && service.revision == 1)
         expect(try database.rawEvidence(id: records[0].evidence[0].id) == nil)
-        service.control(.stop)
+        try await service.control(.stop)
         preferences.sources[1].enabled = true
         try CapturePreferences(defaults: defaults).save(preferences.captureSettings)
         let reopenedEnvironment = AppSyntheticEnvironment()
         let reopened = LiveReviewService(defaults: defaults, directory: { directory }, environment: reopenedEnvironment, automaticallySchedules: false)
         _ = try await reopened.prepare()
         expect(reopenedEnvironment.monitoring && reopenedEnvironment.requests == 0)
-        reopened.control(.stop)
+        try await reopened.control(.stop)
         let agent = AgentConfiguration(appURL: URL(fileURLWithPath: "/tmp/Dayreed 空格\"测试.app"))
         let json = try JSONSerialization.jsonObject(with: Data(agent.mcpJSON().utf8)) as! [String: Any]
         let servers = json["mcpServers"] as! [String: [String: Any]]
@@ -82,6 +82,7 @@ import Foundation
         expect(servers["dayreed"]?["args"] as? [String] == ["mcp"])
         expect(AgentConfiguration.shellQuote("a'b") == "'a'\"'\"'b'")
         try await checkReports()
+        try await checkProviders()
         print("PASS: all-off startup has no permission queries, prompts or sampling; independent sources; persistence; redacted lists; pause rejects late result; old records stay readable; all pages load; deletion counts, cascades and refreshes; saved sources resume on next launch without prompts")
     }
 }

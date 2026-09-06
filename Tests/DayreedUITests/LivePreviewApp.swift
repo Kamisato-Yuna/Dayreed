@@ -19,7 +19,8 @@ import SwiftUI
         self.directory = directory
         self.suite = suite
         service = LiveReviewService(defaults: UserDefaults(suiteName: suite)!, directory: { directory },
-                                    environment: AppSyntheticEnvironment(), automaticallySchedules: false)
+                                    environment: AppSyntheticEnvironment(), automaticallySchedules: false,
+                                    credentials: AppMemoryCredentials(), providerFactory: { _ in AppSyntheticProvider() })
     }
 
     var body: some Scene {

@@ -1,23 +1,22 @@
 #!/usr/bin/env bash
 set -euo pipefail
 cd "$(dirname "$0")/../.."
-if [[ -n "${DAYREED_TEST_BIN_DIR:-}" ]]; then
-  BIN_DIR="$DAYREED_TEST_BIN_DIR"
-else
-  swift build --product DayreedApp
-  BIN_DIR="$(swift build --show-bin-path)"
-fi
+TEST_DIR="$(mktemp -d "${TMPDIR:-/tmp}/dayreed-live-preview.XXXXXX")"
+trap 'rm -rf "$TEST_DIR"' EXIT
+MODULE_DIR="$TEST_DIR/modules"
+Tests/DayreedUITests/compile_test_modules.sh "$MODULE_DIR" --updates
+SPARKLE_DIR="$PWD/.build/artifacts/sparkle/Sparkle/Sparkle.xcframework/macos-arm64_x86_64"
 APP_DIR="$PWD/build/live-preview/DayreedLivePreview.app"
-mkdir -p "$APP_DIR/Contents/MacOS"
+mkdir -p "$APP_DIR/Contents/MacOS" "$APP_DIR/Contents/Frameworks"
 UI_SOURCES=()
-while IFS= read -r file; do UI_SOURCES+=("$file"); done < <(rg --files Sources/DayreedApp | sort | sed '/\/App\/DayreedApp.swift$/d')
-swiftc -parse-as-library -swift-version 6 -target "$(uname -m)-apple-macosx26.0" \
-  -I "$BIN_DIR" -L "$BIN_DIR" -lDayreedCore -lDayreedCapture -lDayreedUpdate -F "$BIN_DIR" -framework Sparkle \
-  -Xlinker -rpath -Xlinker @executable_path/../Frameworks "${UI_SOURCES[@]}" \
-  Tests/DayreedUITests/AppSyntheticEnvironment.swift Tests/DayreedUITests/LivePreviewApp.swift \
-  -o "$APP_DIR/Contents/MacOS/DayreedLivePreview"
-mkdir -p "$APP_DIR/Contents/Frameworks"
-ditto "$BIN_DIR/Sparkle.framework" "$APP_DIR/Contents/Frameworks/Sparkle.framework"
+while IFS= read -r file; do UI_SOURCES+=("$file"); done < <(rg --files Sources/DayreedApp -g '*.swift' | sort | sed '/\/App\/DayreedApp.swift$/d')
+swiftc -module-cache-path "$MODULE_DIR/cache" -parse-as-library -swift-version 6 -target "$(uname -m)-apple-macosx26.0" \
+  -I "$MODULE_DIR" -L "$MODULE_DIR" -lDayreedCore -lDayreedCapture -lDayreedAnalysis -lDayreedUpdate \
+  -F "$SPARKLE_DIR" -framework Sparkle -Xlinker -rpath -Xlinker @executable_path/../Frameworks \
+  "${UI_SOURCES[@]}" Tests/DayreedUITests/AppSyntheticEnvironment.swift Tests/DayreedUITests/AppSyntheticAnalysis.swift \
+  Tests/DayreedUITests/LivePreviewApp.swift -o "$APP_DIR/Contents/MacOS/DayreedLivePreview"
+cp "$MODULE_DIR"/*.dylib "$APP_DIR/Contents/Frameworks/"
+ditto "$SPARKLE_DIR/Sparkle.framework" "$APP_DIR/Contents/Frameworks/Sparkle.framework"
 python3 - "$APP_DIR" <<'PY'
 import plistlib,sys
 from pathlib import Path

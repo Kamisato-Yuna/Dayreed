@@ -24,7 +24,7 @@ struct DayreedApp: App {
     var body: some Scene {
         Window("Dayreed", id: "main") {
             ContentView(store: reviewStore)
-                .onAppear { delegate.reviewStore = reviewStore; updater.start() }
+                .onAppear { delegate.reviewStore = reviewStore; delegate.service = service as? LiveReviewService; updater.start() }
                 .preferredColorScheme(Appearance(rawValue: appearance)?.colorScheme)
                 .frame(minWidth: 840, minHeight: 480)
         }
@@ -49,6 +49,8 @@ struct DayreedApp: App {
 
 final class DayreedAppDelegate: NSObject, NSApplicationDelegate {
     weak var reviewStore: ReviewStore?
+    weak var service: LiveReviewService?
+    private var terminating = false
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         guard let reviewStore else { return .terminateNow }
@@ -60,13 +62,30 @@ final class DayreedAppDelegate: NSObject, NSApplicationDelegate {
             alert.runModal()
             return .terminateCancel
         }
-        guard reviewStore.isDirty else { return .terminateNow }
-        let alert = NSAlert()
-        alert.messageText = "报告还有未保存的修改"
-        alert.informativeText = "返回编辑后可使用 ⌘S 保存。放弃修改会丢失当前草稿。"
-        alert.addButton(withTitle: "返回编辑")
-        alert.addButton(withTitle: "放弃修改并退出")
-        return alert.runModal() == .alertSecondButtonReturn ? .terminateNow : .terminateCancel
+        if reviewStore.isDirty {
+            let alert = NSAlert()
+            alert.messageText = "报告还有未保存的修改"
+            alert.informativeText = "返回编辑后可使用 ⌘S 保存。放弃修改会丢失当前草稿。"
+            alert.addButton(withTitle: "返回编辑")
+            alert.addButton(withTitle: "放弃修改并退出")
+            guard alert.runModal() == .alertSecondButtonReturn else { return .terminateCancel }
+        }
+        guard let service else { return .terminateNow }
+        guard !terminating else { return .terminateLater }
+        terminating = true
+        Task { @MainActor in
+            let stopped = await service.shutdown()
+            terminating = false
+            sender.reply(toApplicationShouldTerminate: stopped)
+            if !stopped {
+                let alert = NSAlert()
+                alert.messageText = "分析尚未确认停止"
+                alert.informativeText = "采集已停止。请取消当前分析后再退出，以便结束 Dayreed 启动的 CLI 进程。"
+                alert.addButton(withTitle: "返回 Dayreed")
+                alert.runModal()
+            }
+        }
+        return .terminateLater
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
