@@ -35,11 +35,18 @@ public final class CaptureCoordinator {
     @ObservationIgnored private var generation: UInt64 = 0
     @ObservationIgnored private var timer: Task<Void, Never>?
     @ObservationIgnored private var pendingTrigger: CaptureTrigger?
+    @ObservationIgnored private var retentionTask: Task<Void, Never>?
+    @ObservationIgnored private var pendingRetention: (days: Int, date: Date)?
+    // Internal injection point for bounded tests; the synchronous operation always runs off MainActor.
+    @ObservationIgnored var retentionOperation: @Sendable (Int, Date) throws -> Void
 
     public init(store: DayreedStore, settings: CaptureSettings = CaptureSettings(),
                 environment: (any CaptureEnvironment)? = nil, automaticallySchedules: Bool = true,
                 now: @escaping @MainActor () -> Date = Date.init) {
         self.store = store
+        self.retentionOperation = { days, date in
+            try store.applyRetention(days: days, now: date)
+        }
         self.settings = settings.normalized
         self.environment = environment ?? MacCaptureEnvironment()
         self.automaticallySchedules = automaticallySchedules
@@ -63,6 +70,7 @@ public final class CaptureCoordinator {
 
     public func stop() {
         started = false
+        pendingRetention = nil
         invalidate()
         timer?.cancel()
         timer = nil
@@ -126,7 +134,6 @@ public final class CaptureCoordinator {
     public func captureNow(trigger: CaptureTrigger = .manual) async {
         refreshPermissions()
         updateMode()
-        guard state.mode == .running else { return }
         guard !state.isCapturing else {
             pendingTrigger = trigger
             return
@@ -140,6 +147,10 @@ public final class CaptureCoordinator {
             }
         }
         let contextGeneration = generation
+        await waitForRetention()
+        refreshPermissions()
+        updateMode()
+        guard !Task.isCancelled, generation == contextGeneration, state.mode == .running else { return }
         let contextSettings = settings
         let permissions = state.permissions
         let application = environment.currentApplication()
@@ -157,6 +168,7 @@ public final class CaptureCoordinator {
             } else if let application, contextSettings.windowTitlesEnabled || contextSettings.accessibilityTextEnabled {
                 let history = await environment.history(for: application, windowTitle: contextSettings.windowTitlesEnabled,
                                                         accessibilityText: contextSettings.accessibilityTextEnabled)
+                await waitForRetention()
                 guard isCurrent(contextGeneration, application: application, began: began) else { return }
                 if contextSettings.windowTitlesEnabled {
                     qualities.windowTitle = history.windowTitleQuality
@@ -177,6 +189,7 @@ public final class CaptureCoordinator {
                 qualities.screenshot = .permissionRequired
             } else {
                 let screenshot = await environment.screenshot(excluding: contextSettings.excludedBundleIdentifiers)
+                await waitForRetention()
                 guard isCurrent(contextGeneration, application: application, began: began) else { return }
                 qualities.screenshot = screenshot.quality
                 if let png = screenshot.pngData, !png.isEmpty {
@@ -184,6 +197,7 @@ public final class CaptureCoordinator {
                 }
             }
         }
+        await waitForRetention()
         guard isCurrent(contextGeneration, application: application, began: began) else { return }
         // No suspension between final validation and append: pause/stop cannot race the commit.
         do {
@@ -196,6 +210,7 @@ public final class CaptureCoordinator {
             state.qualities = qualities
             state.storageFailed = false
             applyRetention()
+            await waitForRetention()
         } catch {
             state.storageFailed = true
         }
@@ -266,7 +281,28 @@ public final class CaptureCoordinator {
     }
 
     private func applyRetention() {
-        do { try store.applyRetention(days: settings.retentionDays, now: now()) }
-        catch { state.storageFailed = true }
+        pendingRetention = (settings.retentionDays, now())
+        guard retentionTask == nil else { return }
+        retentionTask = Task { [weak self] in
+            guard let self else { return }
+            while let request = self.pendingRetention {
+                self.pendingRetention = nil
+                let operation = self.retentionOperation
+                let succeeded = await Task.detached(priority: .utility) {
+                    do {
+                        try operation(request.days, request.date)
+                        return true
+                    } catch { return false }
+                }.value
+                if !succeeded { self.state.storageFailed = true }
+            }
+            self.retentionTask = nil
+        }
+    }
+
+    // Also drains a newer task scheduled while this caller was resuming from an older one.
+    // stop discards queued requests; an active SQLite transaction is allowed to finish.
+    func waitForRetention() async {
+        while let task = retentionTask { await task.value }
     }
 }

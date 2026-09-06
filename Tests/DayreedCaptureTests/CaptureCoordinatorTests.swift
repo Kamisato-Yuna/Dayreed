@@ -187,7 +187,7 @@ func staleInflightScreenshotsAreDiscarded(change: String) async throws {
     fixture.environment.suspendScreenshot = true
     coordinator.start()
     let work = Task { await coordinator.captureNow() }
-    for _ in 0..<1_000 where fixture.environment.screenshotContinuation == nil { await Task.yield() }
+    try await waitUntil { fixture.environment.screenshotContinuation != nil }
     let continuation = try #require(fixture.environment.screenshotContinuation)
     switch change {
     case "pauseResume": coordinator.pause(); coordinator.resume()
@@ -216,7 +216,7 @@ func staleInflightScreenshotsAreDiscarded(change: String) async throws {
     fixture.environment.suspendScreenshot = true
     fixture.coordinator.start()
     let work = Task { await fixture.coordinator.captureNow() }
-    for _ in 0..<1_000 where fixture.environment.screenshotContinuation == nil { await Task.yield() }
+    try await waitUntil { fixture.environment.screenshotContinuation != nil }
     let continuation = try #require(fixture.environment.screenshotContinuation)
     await fixture.coordinator.captureNow()
     await fixture.coordinator.captureNow()
@@ -234,7 +234,7 @@ func staleInflightScreenshotsAreDiscarded(change: String) async throws {
     fixture.environment.suspendHistory = true
     fixture.coordinator.start()
     let work = Task { await fixture.coordinator.captureNow() }
-    for _ in 0..<1_000 where fixture.environment.historyContinuation == nil { await Task.yield() }
+    try await waitUntil { fixture.environment.historyContinuation != nil }
     let continuation = try #require(fixture.environment.historyContinuation)
     fixture.coordinator.pause()
     fixture.coordinator.resume()
@@ -290,10 +290,145 @@ func staleInflightScreenshotsAreDiscarded(change: String) async throws {
     }
     #expect(fixture.environment.screenshotCalls >= 2)
     fixture.environment.handler?(.applicationChanged)
-    for _ in 0..<1_000 where fixture.environment.screenshotCalls < 3 { await Task.yield() }
+    try await waitUntil { fixture.environment.screenshotCalls >= 3 && !coordinator.state.isCapturing }
     let page = try fixture.store.records(in: DateInterval(start: start, end: Date().addingTimeInterval(1)))
     #expect(page.records.contains { $0.trigger == .started })
     #expect(page.records.contains { $0.trigger == .timer })
     #expect(page.records.contains { $0.trigger == .applicationChanged })
     #expect(fixture.environment.permissionRequests == 0)
+}
+
+/// A synchronous stand-in for a long SQLite deletion. Blocking this worker must not block
+/// the test's MainActor controls. Timeout only prevents a regression from hanging the suite.
+private final class ControlledRetention: @unchecked Sendable {
+    private let condition = NSCondition()
+    private var days: [Int] = []
+    private var active = 0
+    private var maximumActive = 0
+    private var permits = 0
+    private var released = false
+
+    func run(days: Int, date: Date) throws {
+        #expect(!Thread.isMainThread)
+        condition.lock()
+        self.days.append(days)
+        active += 1
+        maximumActive = max(maximumActive, active)
+        defer { active -= 1; condition.unlock() }
+        let deadline = Date().addingTimeInterval(5)
+        while permits == 0 && !released {
+            guard condition.wait(until: deadline) else { throw CancellationError() }
+        }
+        if !released { permits -= 1 }
+    }
+
+    var snapshot: (days: [Int], active: Int, maximumActive: Int) {
+        condition.lock()
+        defer { condition.unlock() }
+        return (days, active, maximumActive)
+    }
+
+    func releaseOne() {
+        condition.lock()
+        permits += 1
+        condition.broadcast()
+        condition.unlock()
+    }
+
+    func releaseAll() {
+        condition.lock()
+        released = true
+        condition.broadcast()
+        condition.unlock()
+    }
+}
+
+@MainActor private func waitUntil(_ condition: () -> Bool) async throws {
+    let deadline = ContinuousClock.now.advanced(by: .seconds(3))
+    while !condition(), ContinuousClock.now < deadline {
+        try await Task.sleep(for: .milliseconds(2))
+    }
+    try #require(condition())
+}
+
+@MainActor @Test(arguments: ["pause", "disable", "pauseResume", "stop", "settings"])
+func retentionWaitRechecksControlsBeforeAnySourceRead(change: String) async throws {
+    let fixture = try CaptureFixture(settings: CaptureSettings(screenshotsEnabled: true, historyEnabled: true,
+                                                              accessibilityTextEnabled: true))
+    let retention = ControlledRetention()
+    defer { retention.releaseAll(); fixture.cleanUp() }
+    fixture.coordinator.retentionOperation = retention.run
+    fixture.coordinator.start()
+    try await waitUntil { retention.snapshot.active == 1 }
+    let capture = Task { await fixture.coordinator.captureNow() }
+    try await waitUntil { fixture.coordinator.state.isCapturing }
+    switch change {
+    case "pause": fixture.coordinator.pause()
+    case "disable": fixture.coordinator.updateSettings(CaptureSettings())
+    case "pauseResume": fixture.coordinator.pause(); fixture.coordinator.resume()
+    case "stop": fixture.coordinator.stop()
+    default:
+        var settings = fixture.coordinator.settings
+        settings.retentionDays = 7
+        fixture.coordinator.updateSettings(settings)
+    }
+    #expect(retention.snapshot.active == 1) // Controls returned while the worker was still blocked.
+    #expect(fixture.environment.historyCalls == 0)
+    #expect(fixture.environment.screenshotCalls == 0)
+    retention.releaseAll()
+    await capture.value
+    #expect(fixture.environment.historyCalls == 0)
+    #expect(fixture.environment.screenshotCalls == 0)
+    #expect(try fixture.records().isEmpty)
+}
+
+@MainActor @Test func retentionRequestsAreSerialAndKeepOnlyLatestSettings() async throws {
+    let fixture = try CaptureFixture(settings: CaptureSettings(screenshotsEnabled: true))
+    let retention = ControlledRetention()
+    defer { retention.releaseAll(); fixture.cleanUp() }
+    fixture.coordinator.retentionOperation = retention.run
+    fixture.coordinator.start()
+    try await waitUntil { retention.snapshot.days == [30] }
+    for days in [20, 10, 7] {
+        var settings = fixture.coordinator.settings
+        settings.retentionDays = days
+        fixture.coordinator.updateSettings(settings)
+    }
+    let capture = Task { await fixture.coordinator.captureNow() }
+    try await waitUntil { fixture.coordinator.state.isCapturing }
+    await fixture.coordinator.captureNow()
+    await fixture.coordinator.captureNow()
+    #expect(retention.snapshot.days == [30])
+    #expect(fixture.environment.screenshotCalls == 0)
+    retention.releaseOne()
+    try await waitUntil { retention.snapshot.days == [30, 7] }
+    #expect(retention.snapshot.maximumActive == 1)
+    #expect(fixture.environment.screenshotCalls == 0) // Also waits for the coalesced successor.
+    retention.releaseAll()
+    await capture.value
+    #expect(fixture.environment.screenshotCalls == 1)
+    #expect(try fixture.records().count == 1)
+    #expect(retention.snapshot.days == [30, 7, 7]) // The third pass follows the successful append.
+    #expect(retention.snapshot.maximumActive == 1)
+}
+
+@MainActor @Test func settingsCleanupDuringInflightReadCannotReintroduceOldEvidence() async throws {
+    let fixture = try CaptureFixture(settings: CaptureSettings(screenshotsEnabled: true))
+    let retention = ControlledRetention()
+    defer { retention.releaseAll(); fixture.cleanUp() }
+    fixture.environment.suspendScreenshot = true
+    fixture.coordinator.start()
+    let capture = Task { await fixture.coordinator.captureNow() }
+    try await waitUntil { fixture.environment.screenshotContinuation != nil }
+    let continuation = try #require(fixture.environment.screenshotContinuation)
+    fixture.coordinator.retentionOperation = retention.run
+    fixture.coordinator.updateSettings(CaptureSettings())
+    try await waitUntil { retention.snapshot.active == 1 }
+    continuation.resume(returning: ScreenshotSample(pngData: Data([1]), quality: .available))
+    fixture.coordinator.pause()
+    #expect(fixture.coordinator.state.mode == .paused)
+    #expect(retention.snapshot.active == 1)
+    retention.releaseAll()
+    await capture.value
+    #expect(try fixture.records().isEmpty)
 }
