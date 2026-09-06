@@ -4,6 +4,10 @@ import SQLite3
 public struct ReportService: Sendable {
     private let store: DayreedStore
     public init(store: DayreedStore) { self.store = store }
+    /// Creates a manual report even on a day without observations. Never overwrites an existing one.
+    public func create(for period: ReportPeriod, markdown: String) throws -> ReportDocument {
+        try store.createReport(for: period, markdown: markdown)
+    }
     public func generateCandidate(for period: ReportPeriod) throws -> ReportCandidate {
         try store.generateReportCandidate(for: period)
     }
@@ -22,6 +26,21 @@ private struct StoredCandidate: Codable {
 }
 
 extension DayreedStore {
+    public func createReport(for period: ReportPeriod, markdown: String) throws -> ReportDocument {
+        try validateMarkdown(markdown)
+        return try lock.withLock {
+            try requireWrite()
+            return try transaction {
+                guard try readReport(for: period) == nil else { throw AnalysisError.conflict }
+                let ids = Set(try readTimeline(in: period.interval).flatMap(\.recordIDs)).sorted { $0.uuidString < $1.uuidString }
+                let report = ReportDocument(id: UUID(), period: period, markdown: markdown, version: 1,
+                    isEdited: true, needsReview: false, updatedAt: Date(), recordIDs: ids)
+                try writeReport(report)
+                return report
+            }
+        }
+    }
+
     public func report(for period: ReportPeriod) throws -> ReportDocument? {
         try lock.withLock { try readReport(for: period) }
     }
@@ -139,9 +158,7 @@ extension DayreedStore {
     }
 
     public func editReport(id: UUID, markdown: String, expectedVersion: Int64) throws -> ReportDocument {
-        guard markdown.utf8.count <= 2 * 1_024 * 1_024, !markdown.contains("\0") else {
-            throw AnalysisError.inputTooLarge
-        }
+        try validateMarkdown(markdown)
         return try lock.withLock {
             try requireWrite()
             return try transaction {
@@ -157,6 +174,36 @@ extension DayreedStore {
                 try writeReport(value)
                 return value
             }
+        }
+    }
+
+    private func validateMarkdown(_ markdown: String) throws {
+        guard markdown.utf8.count <= 2 * 1_024 * 1_024, !markdown.contains("\0") else { throw AnalysisError.inputTooLarge }
+    }
+
+    /// Report bodies also need date deletion when they were manually created without source rows.
+    func eraseReports(in interval: DateInterval) throws {
+        try statement("DELETE FROM reports WHERE end>? AND start<?") {
+            try bind(interval, to: $0); try stepDone($0)
+        }
+        let ids: [UUID] = try statement("SELECT value FROM report_candidates WHERE start<?") {
+            try check(sqlite3_bind_double($0, 1, interval.end.timeIntervalSince1970))
+            var ids: [UUID] = []
+            while try stepRow($0) {
+                let stored: StoredCandidate = try decode(data($0, 0))
+                if stored.candidate.period.interval.end > interval.start { ids.append(stored.candidate.id) }
+            }
+            return ids
+        }
+        for id in ids { try deleteCandidate(id: id) }
+    }
+
+    func eraseReports(before cutoff: Date) throws {
+        try statement("DELETE FROM reports WHERE start<?") {
+            try check(sqlite3_bind_double($0, 1, cutoff.timeIntervalSince1970)); try stepDone($0)
+        }
+        try statement("DELETE FROM report_candidates WHERE start<?") {
+            try check(sqlite3_bind_double($0, 1, cutoff.timeIntervalSince1970)); try stepDone($0)
         }
     }
 

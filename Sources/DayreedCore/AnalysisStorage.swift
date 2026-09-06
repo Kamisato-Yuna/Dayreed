@@ -238,21 +238,36 @@ extension DayreedStore {
     @discardableResult
     public func correctActivity(recordID: UUID, title: String, summary: String,
                                 expectedVersion: Int64) throws -> ActivityAnnotation {
-        let classification = ActivityClassification(recordID: recordID, title: title, summary: summary)
-        try classification.validate()
+        let values = try correctActivities(recordIDs: [recordID], expectedVersions: [recordID: expectedVersion],
+                                          title: title, summary: summary)
+        guard let first = values.first else { throw AnalysisError.notFound }
+        return first
+    }
+
+    /// All records in a merged event are checked and corrected in one transaction. No partial edit.
+    @discardableResult
+    public func correctActivities(recordIDs: [UUID], expectedVersions: [UUID: Int64],
+                                   title: String, summary: String) throws -> [ActivityAnnotation] {
+        guard !recordIDs.isEmpty, Set(recordIDs).count == recordIDs.count,
+              Set(recordIDs) == Set(expectedVersions.keys) else { throw AnalysisError.invalidConfiguration }
+        try ActivityClassification(recordID: recordIDs[0], title: title, summary: summary).validate()
         return try lock.withLock {
             try requireWrite()
             return try transaction {
-                guard let previous = try readAnnotation(recordID: recordID) else { throw AnalysisError.notFound }
-                guard previous.version == expectedVersion else { throw AnalysisError.conflict }
-                let value = ActivityAnnotation(classification: classification, providerID: previous.providerID,
-                    providerVersion: previous.providerVersion,
-                    sources: previous.sources, evidenceIDs: previous.evidenceIDs, version: previous.version + 1,
-                    isCorrected: true, continuitySeconds: previous.continuitySeconds, analyzedAt: previous.analyzedAt)
-                try writeAnnotation(value)
-                try markReportsForReview(recordID: recordID)
+                let values = try recordIDs.map { recordID in
+                    guard let previous = try readAnnotation(recordID: recordID) else { throw AnalysisError.notFound }
+                    guard previous.version == expectedVersions[recordID] else { throw AnalysisError.conflict }
+                    return ActivityAnnotation(classification: ActivityClassification(recordID: recordID, title: title, summary: summary),
+                        providerID: previous.providerID, providerVersion: previous.providerVersion,
+                        sources: previous.sources, evidenceIDs: previous.evidenceIDs, version: previous.version + 1,
+                        isCorrected: true, continuitySeconds: previous.continuitySeconds, analyzedAt: previous.analyzedAt)
+                }
+                for value in values {
+                    try writeAnnotation(value)
+                    try markReportsForReview(recordID: value.classification.recordID)
+                }
                 try advanceAnalysisRevision()
-                return value
+                return values
             }
         }
     }

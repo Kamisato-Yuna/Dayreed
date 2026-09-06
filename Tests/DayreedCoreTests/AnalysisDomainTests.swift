@@ -218,3 +218,66 @@ func deletionErasesRelatedReportBodiesCandidatesAndAnnotations(_ method: String)
     try store.append(input)
     #expect(try store.records(in: DateInterval(start: input.capturedAt, duration: 1)).records.first?.id == input.id)
 }
+
+@Test func batchCorrectionIsAtomicAcrossConflictPendingAndDeletedRecords() throws {
+    let fixture = try DomainFixture(); defer { fixture.cleanup() }
+    let date = Date(timeIntervalSince1970: 1_800_000_000)
+    let first = try fixture.sample(at: date)
+    let second = try fixture.sample(at: date.addingTimeInterval(60))
+    #expect(throws: AnalysisError.conflict) {
+        try fixture.store.correctActivities(recordIDs: [first, second], expectedVersions: [first: 1, second: 99], title: "新标题", summary: "")
+    }
+    #expect(try fixture.store.activityAnnotation(recordID: first)?.version == 1)
+    #expect(try fixture.store.activityAnnotation(recordID: first)?.classification.title == "资料整理")
+    let corrected = try fixture.store.correctActivities(recordIDs: [first, second], expectedVersions: [first: 1, second: 1],
+                                                       title: "合并纠正", summary: "手工纠正")
+    #expect(corrected.count == 2 && corrected.allSatisfy { $0.version == 2 && $0.isCorrected })
+    let pending = try fixture.sample(at: date.addingTimeInterval(70), analyzed: false)
+    #expect(throws: AnalysisError.notFound) {
+        try fixture.store.correctActivities(recordIDs: [first, pending], expectedVersions: [first: 2, pending: 0], title: "不应部分写入", summary: "")
+    }
+    try fixture.store.deleteRecords(in: DateInterval(start: date.addingTimeInterval(60), duration: 1))
+    #expect(throws: AnalysisError.notFound) {
+        try fixture.store.correctActivities(recordIDs: [first, second], expectedVersions: [first: 2, second: 2], title: "不应部分写入", summary: "")
+    }
+    #expect(try fixture.store.activityAnnotation(recordID: first)?.version == 2)
+    #expect(try fixture.store.activityAnnotation(recordID: first)?.classification.title == "合并纠正")
+}
+
+@Test func manualReportCanBeCreatedWithoutEvidenceAndConcurrentCreateHasOneWinner() async throws {
+    let fixture = try DomainFixture(); defer { fixture.cleanup() }
+    let period = try ReportPeriod(kind: .daily, containing: Date(timeIntervalSince1970: 1_800_000_000), timeZoneIdentifier: "UTC")
+    let secondConnection = try DayreedStore(directory: fixture.directory)
+    let firstService = ReportService(store: fixture.store), secondService = ReportService(store: secondConnection)
+    let results = await withTaskGroup(of: Bool.self) { group in
+        group.addTask { (try? firstService.create(for: period, markdown: "# 手工 A")) != nil }
+        group.addTask { (try? secondService.create(for: period, markdown: "# 手工 B")) != nil }
+        var results: [Bool] = []
+        for await result in group { results.append(result) }
+        return results
+    }
+    #expect(results.filter { $0 }.count == 1)
+    let report = try #require(try fixture.store.report(for: period))
+    #expect(report.recordIDs.isEmpty && report.isEdited && report.version == 1)
+    #expect(throws: AnalysisError.conflict) { try firstService.create(for: period, markdown: "不覆盖") }
+    #expect(try fixture.store.report(for: period)?.markdown == report.markdown)
+}
+
+@Test(arguments: ["range", "retention", "all"])
+func manualReportsWithoutSourceRowsFollowDateDeletion(_ method: String) throws {
+    let fixture = try DomainFixture(); defer { fixture.cleanup() }
+    let date = Date(timeIntervalSince1970: 1_800_000_000)
+    let period = try ReportPeriod(kind: .daily, containing: date, timeZoneIdentifier: "UTC")
+    let later = try ReportPeriod(kind: .daily, containing: date.addingTimeInterval(7 * 86_400), timeZoneIdentifier: "UTC")
+    _ = try ReportService(store: fixture.store).create(for: period, markdown: "SYNTHETIC_MANUAL_WITHOUT_SOURCE")
+    _ = try ReportService(store: fixture.store).create(for: later, markdown: "保留新日报")
+    switch method {
+    case "range": try fixture.store.deleteRecords(in: period.interval)
+    case "retention": try fixture.store.applyRetention(days: 1, now: later.interval.start)
+    default: try fixture.store.deleteAll()
+    }
+    #expect(try fixture.store.report(for: period) == nil)
+    #expect(try fixture.store.report(for: later) != nil || method == "all")
+    let bytes = try Data(contentsOf: fixture.directory.appendingPathComponent("records.sqlite3"))
+    #expect(bytes.range(of: Data("SYNTHETIC_MANUAL_WITHOUT_SOURCE".utf8)) == nil)
+}

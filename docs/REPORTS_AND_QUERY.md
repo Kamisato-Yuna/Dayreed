@@ -27,6 +27,8 @@ try store.correctActivity(recordID: recordID, title: "整理资料",
 
 纠正后重分析保留用户修改。明确调用 `clearActivityCorrection(recordID:expectedVersion:)` 才重新允许 Provider 更新该记录；此调用本身不发起分析。
 
+合并事件应调用 `store.correctActivities(recordIDs:expectedVersions:title:summary:)`，传入事件的 `recordIDs` 和 `versions`。全部记录在同一事务核对后写入；任何版本冲突都不会部分修改。没有标注的 pending 记录返回 `notFound`，界面应先禁用纠正操作。
+
 报告是 SQLite 中持久化的 Markdown，不是 App 临时展示文本。生成不调用 Provider、不读 raw，只使用时间线派生内容。
 
 ```swift
@@ -38,8 +40,10 @@ let edited = try reports.edit(id: saved.id, markdown: editedMarkdown,
                               expectedVersion: saved.version)
 ```
 
+没有记录时也可以直接手写：`reports.create(for: period, markdown: text)`。单事务创建、唯一约束防止并发重复，已存在报告返回 `conflict`，不会覆盖它。无需通过候选稿绕行。
+
 每次生成都保存独立候选稿，原报告保持不变。接受候选时，事务同时核对报告版本和来源标注版本；并发手改返回 `AnalysisError.conflict`，新观测或来源变化返回 `stale`。`candidates(for:)` 可恢复未处理稿，`discardCandidate(id:)` 删除不再需要的候选。修改时间线后已有报告保留正文并标为 `needsReview`。
 
-删除记录、全部删除和按日保留清理沿用 `DayreedStore` 的 API。schema 2 使用普通主键、事务和级联关联，并在删除记录的同一事务删除涉及它的报告全文、候选全文及标注；仅删除外键关联会遗留正文，因此不能只依赖关联表的级联。手改报告也遵循此规则。此行为不承诺清除文件系统快照或外部备份。
+删除记录、全部删除和按日保留清理沿用 `DayreedStore` 的 API。schema 2 使用普通主键、事务和级联关联，并在删除记录的同一事务删除涉及它的报告全文、候选全文及标注；仅删除外键关联会遗留正文，因此不能只依赖关联表的级联。没有来源行的手工报告也会按日期删除：区间删除清除与区间相交的整份报告，保留清理删除开始时间早于保留日的整份报告（含跨日周报），全部删除清除所有报告。此行为不承诺清除文件系统快照或外部备份。
 
 只读 Agent 使用 `DayreedStore(directory:access: .readOnly)`；首次 schema 升级应由 App 的可写 Store 完成。只读服务不能接受候选、修改报告或发起 Provider 分析。

@@ -212,11 +212,13 @@ public final class DayreedStore: @unchecked Sendable {
             try requireWrite()
             try validate(interval)
             return try transaction {
-                try statement("DELETE FROM records WHERE captured_at >= ? AND captured_at < ?") { statement in
+                let count = try statement("DELETE FROM records WHERE captured_at >= ? AND captured_at < ?") { statement in
                     try bind(interval, to: statement)
                     try stepDone(statement)
                     return Int(sqlite3_changes(connection))
                 }
+                if interval.duration > 0 { try eraseReports(in: interval) }
+                return count
             }
         }
     }
@@ -227,7 +229,10 @@ public final class DayreedStore: @unchecked Sendable {
             try requireWrite()
             return try transaction {
                 try execute("DELETE FROM records")
-                return Int(sqlite3_changes(connection))
+                let count = Int(sqlite3_changes(connection))
+                try execute("DELETE FROM reports; DELETE FROM report_candidates")
+                try advanceAnalysisRevision()
+                return count
             }
         }
     }
@@ -243,11 +248,13 @@ public final class DayreedStore: @unchecked Sendable {
         return try lock.withLock {
             try requireWrite()
             return try transaction {
-                try statement("DELETE FROM records WHERE captured_at < ?") { statement in
+                let count = try statement("DELETE FROM records WHERE captured_at < ?") { statement in
                     try check(sqlite3_bind_double(statement, 1, cutoff.timeIntervalSince1970))
                     try stepDone(statement)
                     return Int(sqlite3_changes(connection))
                 }
+                try eraseReports(before: cutoff)
+                return count
             }
         }
     }
