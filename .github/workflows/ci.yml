@@ -36,9 +36,9 @@ jobs:
           ./Tests/DayreedUITests/test_live_services.sh
           ./Tests/Scripts/install_cli.sh
           python3 Tests/Scripts/test_mcp.py "$(swift build --show-bin-path)/dayreed"
-          python3 Tests/Scripts/test_release.py
       - name: Package app and verify CLI metadata
         run: |
           ./script/build_app.sh debug
           build/debug/Dayreed.app/Contents/Helpers/dayreed status --json
           plutil -lint build/debug/Dayreed.app/Contents/Info.plist
+          python3 Tests/Scripts/test_release.py

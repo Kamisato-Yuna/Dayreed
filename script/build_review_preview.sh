@@ -10,7 +10,7 @@ SPARKLE_DIR="$ROOT_DIR/.build/artifacts/sparkle/Sparkle/Sparkle.xcframework/maco
 APP_DIR="$ROOT_DIR/build/ui-preview/DayreedReviewPreview.app"
 mkdir -p "$APP_DIR/Contents/MacOS" "$APP_DIR/Contents/Resources" "$APP_DIR/Contents/Frameworks"
 UI_SOURCES=()
-while IFS= read -r file; do UI_SOURCES+=("$file"); done < <(rg --files Sources/DayreedApp -g '*.swift' | sort | sed '/\/App\/DayreedApp.swift$/d')
+while IFS= read -r file; do UI_SOURCES+=("$file"); done < <(/usr/bin/find Sources/DayreedApp -type f -name '*.swift' -print | LC_ALL=C sort | sed '/\/App\/DayreedApp.swift$/d')
 swiftc -module-cache-path "$MODULE_DIR/cache" -parse-as-library -swift-version 6 -target "$(uname -m)-apple-macosx26.0" \
   -I "$MODULE_DIR" -L "$MODULE_DIR" -lDayreedCore -lDayreedCapture -lDayreedAnalysis -lDayreedUpdate \
   -F "$SPARKLE_DIR" -framework Sparkle -Xlinker -rpath -Xlinker @executable_path/../Frameworks \
