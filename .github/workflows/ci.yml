@@ -34,6 +34,7 @@ jobs:
         run: |
           ./script/test_review_ui.sh
           ./Tests/DayreedUITests/test_live_services.sh
+          ./Tests/DayreedUITests/test_live_preview_samples.sh
           ./Tests/Scripts/install_cli.sh
           python3 Tests/Scripts/test_mcp.py "$(swift build --show-bin-path)/dayreed"
       - name: Package app and verify CLI metadata
