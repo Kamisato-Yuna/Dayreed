@@ -108,14 +108,38 @@ public struct AnalysisSchedule: Codable, Equatable, Sendable {
     public var enabled: Bool
     public var everySeconds: Double
     public var lookbackSeconds: Double
-    public init(enabled: Bool = false, everySeconds: Double = 300, lookbackSeconds: Double = 86_400) {
+    public var currentDayOnly: Bool
+    public var timeZoneIdentifier: String
+    public init(enabled: Bool = false, everySeconds: Double = 300, lookbackSeconds: Double = 86_400,
+                currentDayOnly: Bool = true, timeZoneIdentifier: String = TimeZone.current.identifier) {
         self.enabled = enabled; self.everySeconds = everySeconds; self.lookbackSeconds = lookbackSeconds
+        self.currentDayOnly = currentDayOnly; self.timeZoneIdentifier = timeZoneIdentifier
     }
     public func validate() throws {
         guard everySeconds.isFinite, (5...86_400).contains(everySeconds),
-              lookbackSeconds.isFinite, (5...31_536_000).contains(lookbackSeconds) else {
+              lookbackSeconds.isFinite, (5...31_536_000).contains(lookbackSeconds),
+              TimeZone(identifier: timeZoneIdentifier) != nil else {
             throw AnalysisError.invalidConfiguration
         }
+    }
+
+    public func interval(endingAt end: Date) throws -> DateInterval {
+        try validate()
+        guard end.timeIntervalSince1970.isFinite else { throw AnalysisError.invalidConfiguration }
+        let start = currentDayOnly
+            ? try ReportPeriod(kind: .daily, containing: end, timeZoneIdentifier: timeZoneIdentifier).interval.start
+            : end.addingTimeInterval(-lookbackSeconds)
+        return DateInterval(start: start, end: end)
+    }
+
+    private enum CodingKeys: CodingKey { case enabled, everySeconds, lookbackSeconds, currentDayOnly, timeZoneIdentifier }
+    public init(from decoder: any Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        enabled = try values.decode(Bool.self, forKey: .enabled)
+        everySeconds = try values.decode(Double.self, forKey: .everySeconds)
+        lookbackSeconds = try values.decode(Double.self, forKey: .lookbackSeconds)
+        currentDayOnly = try values.decodeIfPresent(Bool.self, forKey: .currentDayOnly) ?? true
+        timeZoneIdentifier = try values.decodeIfPresent(String.self, forKey: .timeZoneIdentifier) ?? TimeZone.current.identifier
     }
 }
 

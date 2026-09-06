@@ -64,6 +64,11 @@ private struct DomainFixture {
     #expect(throws: AnalysisError.invalidConfiguration) {
         try ReportPeriod(kind: .daily, containing: date, timeZoneIdentifier: "not/a/timezone")
     }
+    let schedule = AnalysisSchedule(timeZoneIdentifier: "America/Los_Angeles")
+    #expect(try schedule.interval(endingAt: date).start == day.interval.start)
+    #expect(try schedule.interval(endingAt: date).end == date)
+    let oldSettings = Data("{\"enabled\":false,\"everySeconds\":300,\"lookbackSeconds\":86400}".utf8)
+    #expect(try JSONDecoder().decode(AnalysisSchedule.self, from: oldSettings).currentDayOnly)
 }
 
 @Test func gapsPendingSamplesAndResumeBreakContinuityWithoutDiscardingPoints() throws {
