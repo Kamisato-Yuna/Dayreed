@@ -14,7 +14,7 @@ swiftc -module-cache-path "$MODULE_DIR/cache" -parse-as-library -swift-version 6
   -I "$MODULE_DIR" -L "$MODULE_DIR" -lDayreedCore -lDayreedCapture -lDayreedAnalysis -lDayreedUpdate \
   -F "$SPARKLE_DIR" -framework Sparkle -Xlinker -rpath -Xlinker @executable_path/../Frameworks \
   "${UI_SOURCES[@]}" Tests/DayreedUITests/AppSyntheticEnvironment.swift Tests/DayreedUITests/AppSyntheticAnalysis.swift \
-  Tests/DayreedUITests/LivePreviewApp.swift -o "$APP_DIR/Contents/MacOS/DayreedLivePreview"
+  Tests/DayreedUITests/LivePreviewSamples.swift Tests/DayreedUITests/LivePreviewApp.swift -o "$APP_DIR/Contents/MacOS/DayreedLivePreview"
 cp "$MODULE_DIR"/*.dylib "$APP_DIR/Contents/Frameworks/"
 ditto "$SPARKLE_DIR/Sparkle.framework" "$APP_DIR/Contents/Frameworks/Sparkle.framework"
 python3 - "$APP_DIR" <<'PY'

@@ -13,15 +13,15 @@ struct ReportCandidateView: View {
             ScrollView { MarkdownPreview(markdown: candidate.markdown).padding() }
             if let failure = store.failure { Text(failure).foregroundStyle(.red) }
             HStack {
-                Button("丢弃候选稿", role: .destructive) { Task { await store.reviewCandidate(candidate, accept: false); closeIfRemoved() } }
+                Button("丢弃候选稿", role: .destructive) { Task { await store.reviewCandidate(candidate, accept: false); closeIfRemoved() } }.accessibilityIdentifier("candidate.discard")
                 Spacer()
-                Button("稍后审查") { dismiss() }.keyboardShortcut(.cancelAction)
-                Button("采用并替换报告…") { confirm = true }.buttonStyle(.borderedProminent)
+                Button("稍后审查") { dismiss() }.keyboardShortcut(.cancelAction).accessibilityIdentifier("candidate.later")
+                Button("采用并替换报告…") { confirm = true }.buttonStyle(.borderedProminent).accessibilityIdentifier("candidate.accept")
             }.disabled(store.isWorking || store.isDirty)
         }.padding(24).frame(minWidth: 620, minHeight: 500)
         .interactiveDismissDisabled(store.isWorking)
         .confirmationDialog("采用候选稿并替换报告？", isPresented: $confirm, titleVisibility: .visible) {
-            Button("替换报告") { Task { await store.reviewCandidate(candidate, accept: true); closeIfRemoved() } }
+            Button("替换报告") { Task { await store.reviewCandidate(candidate, accept: true); closeIfRemoved() } }.accessibilityIdentifier("candidate.confirmReplacement")
             Button("取消", role: .cancel) { }
         } message: { Text("已经保存的手工报告内容也会被此候选稿替换。") }
     }

@@ -10,8 +10,9 @@ import SwiftUI
     private let service: LiveReviewService
     private let directory: URL
     private let suite: String
+    @State private var appearance = "light"
     @State private var ready = false
-    @State private var failure = false
+    @State private var failure: String?
 
     init() {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent("dayreed-live-preview-\(UUID())")
@@ -27,30 +28,34 @@ import SwiftUI
         Window("Dayreed · 真实适配器合成验收", id: "preview") {
             Group {
                 if ready { ContentView(service: service) }
-                else if failure { Text("合成数据库创建失败") }
+                else if let failure { Text("合成数据库创建失败 · \(failure)") }
                 else { ProgressView("准备合成样本…") }
             }
             .safeAreaInset(edge: .bottom) {
-                Text("仅合成数据库与模拟权限 · 不采集真实桌面 · 不访问网络").font(.caption).padding(8)
+                HStack {
+                    Text("合成验收 · 昨天长文 / 明天空白").font(.caption).foregroundStyle(.secondary)
+                    Spacer()
+                    Picker("验收主题", selection: $appearance) {
+                        Text("浅色").tag("light")
+                        Text("深色").tag("dark")
+                    }.pickerStyle(.segmented).labelsHidden().accessibilityLabel("验收主题").frame(width: 150)
+                        .accessibilityIdentifier("preview.appearance")
+                }.padding(8)
             }
-            .frame(minWidth: 840, minHeight: 480)
+            .preferredColorScheme(appearance == "dark" ? .dark : .light)
+            .frame(minWidth: 720, minHeight: 480)
             .task {
                 guard !ready else { return }
                 delegate.directory = directory
                 delegate.suite = suite
                 do {
-                    let database = try await service.prepare()
-                    let sample = Self.image()
-                    _ = try await Task.detached {
-                        try database.append(CaptureRecordInput(capturedAt: .now, trigger: .manual,
-                            applicationBundleIdentifier: "test.synthetic-editor",
-                            qualities: SourceQualities(screenshot: .available, application: .available, windowTitle: .available, accessibilityText: .available),
-                            evidence: [EvidenceInput(kind: .screenshot, mediaType: "image/png", data: sample),
-                                       .text("合成窗口标题 · 不包含个人内容", kind: .windowTitle),
-                                       .text("这是一段专用于证据窗口验收的合成辅助功能文本。", kind: .accessibilityText)]))
-                    }.value
+                    try await LivePreviewSamples.seed(service: service, image: Self.image())
                     ready = true
-                } catch { failure = true }
+                } catch {
+                    // Only bounded domain errors, never raw backend descriptions or data paths.
+                    failure = (error as? ReviewServiceError)?.errorDescription
+                        ?? (error as? AnalysisError)?.rawValue ?? "存储或样本校验失败"
+                }
             }
         }.defaultSize(width: 1080, height: 720)
         Settings { SettingsView(service: service, updater: updater) }

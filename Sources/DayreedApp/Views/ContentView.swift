@@ -17,6 +17,7 @@ struct ContentView: View {
                 Section("回顾") {
                     ForEach(ReviewSection.allCases) { item in
                         Label(item.title, systemImage: item.symbol).tag(item.rawValue)
+                            .accessibilityIdentifier("navigation.\(item.rawValue)")
                     }
                 }
             }
@@ -43,8 +44,9 @@ struct ContentView: View {
                 store.discardDraft()
                 if let pendingSection { selection = pendingSection.rawValue }
                 if let pendingQuery { Task { await store.navigate(to: pendingQuery) } }
-            }
+            }.accessibilityIdentifier("navigation.discardChanges")
             Button("继续编辑", role: .cancel) { pendingQuery = nil; pendingSection = nil }
+                .accessibilityIdentifier("navigation.keepEditing")
         } message: { Text("当前 Markdown 草稿尚未保存。继续编辑可保留草稿。") }
         .background {
             // Menu shortcuts remain available when the sidebar is collapsed.
@@ -68,17 +70,18 @@ struct ContentView: View {
     @ToolbarContentBuilder private var dateToolbar: some ToolbarContent {
         ToolbarItemGroup(placement: .navigation) {
             Button("上一\(section == .weekly ? "周" : "天")", systemImage: "chevron.left") { move(-1) }
-                .keyboardShortcut("[", modifiers: .command)
+                .keyboardShortcut("[", modifiers: .command).accessibilityIdentifier("date.previous")
             DatePicker("浏览日期", selection: Binding(get: { store.query.date }, set: { request(query(for: section, date: $0)) }), displayedComponents: .date)
-                .labelsHidden().help("选择回顾日期")
+                .accessibilityIdentifier("date.picker").labelsHidden().help("选择回顾日期")
             Button("下一\(section == .weekly ? "周" : "天")", systemImage: "chevron.right") { move(1) }
-                .keyboardShortcut("]", modifiers: .command)
+                .keyboardShortcut("]", modifiers: .command).accessibilityIdentifier("date.next")
             Button("今天") { request(query(for: section, date: .now)) }
-                .keyboardShortcut("t", modifiers: [.command, .shift])
+                .keyboardShortcut("t", modifiers: [.command, .shift]).accessibilityIdentifier("date.today")
         }
         ToolbarItem(placement: .automatic) {
             Button("刷新", systemImage: "arrow.clockwise") { Task { await store.reload() } }
                 .disabled(!store.service.capabilities.read || store.isDirty || store.isLoading || store.isWorking)
+                .accessibilityIdentifier("review.refresh")
                 .help(store.isDirty ? "请先保存草稿" : "重新载入当前日期")
         }
     }

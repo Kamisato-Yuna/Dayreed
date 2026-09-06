@@ -9,6 +9,7 @@ final class ReviewStore {
     private(set) var isLoading = false
     private(set) var isWorking = false
     private(set) var loaded = false
+    var selectedEventID: String?
     var draft = ""
     private(set) var savedDraft = ""
     var message: String?
@@ -24,6 +25,7 @@ final class ReviewStore {
 
     func navigate(to query: ReviewQuery) async {
         guard !isDirty, !isWorking else { return }
+        if self.query.interval != query.interval || self.query.kind != query.kind { selectedEventID = nil }
         self.query = query
         await reload()
     }
@@ -103,7 +105,10 @@ final class ReviewStore {
             let result = try await service.correct(event: event, title: title, summary: summary)
             if let index = snapshot.events.firstIndex(where: { $0.id == event.id }) { snapshot.events[index] = result }
             message = "已保存纠正"
-            do { snapshot = try await service.load(query) }
+            do {
+                snapshot = try await service.load(query)
+                reconcileSelection()
+            }
             catch { message = "纠正已保存，但未能刷新完整时间线，请使用刷新按钮重试。" }
             return true
         } catch { fail(error); return false }
@@ -119,6 +124,7 @@ final class ReviewStore {
         if isDirty {
             loadSequence += 1
             snapshot = ReviewSnapshot()
+            selectedEventID = nil
             savedDraft = ""
             isLoading = false
             loaded = true
@@ -130,8 +136,15 @@ final class ReviewStore {
 
     private func accept(_ snapshot: ReviewSnapshot) {
         self.snapshot = snapshot
+        reconcileSelection()
         savedDraft = snapshot.report?.markdown ?? ""
         draft = savedDraft
+    }
+
+    private func reconcileSelection() {
+        if let selectedEventID, !snapshot.events.contains(where: { $0.id == selectedEventID }) {
+            self.selectedEventID = nil
+        }
     }
 
     private func fail(_ error: Error) {

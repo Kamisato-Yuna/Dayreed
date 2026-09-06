@@ -37,6 +37,7 @@ struct ReviewView: View {
                     Button(section == .timeline ? "分析本日" : "重新生成", systemImage: "arrow.trianglehead.2.clockwise.rotate.90") {
                         confirmRegeneration = true
                     }.disabled(store.isWorking || store.isLoading || store.isDirty || !store.loaded)
+                    .accessibilityIdentifier("review.regenerate")
                     .help(store.isDirty ? "请先保存修改" : (section == .timeline ? "分析已启用来源" : "从已保存摘要生成候选报告"))
                 }
             }

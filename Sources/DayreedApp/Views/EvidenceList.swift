@@ -22,6 +22,7 @@ struct EvidenceList: View {
                         Spacer()
                         if canOpen {
                             Button("查看") { open(item) }.accessibilityLabel("查看\(item.source.title)依据")
+                                .accessibilityIdentifier("evidence.open.\(item.id)")
                         }
                     }
                 }

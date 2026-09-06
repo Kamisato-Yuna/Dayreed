@@ -6,6 +6,17 @@ import Foundation
         let store = ReviewStore(service: service, date: service.date)
         await store.reload()
         precondition(store.loaded && store.snapshot.events.count == 1)
+        store.selectedEventID = store.snapshot.events[0].id
+        let selectedID = store.selectedEventID
+        await store.reload()
+        precondition(store.selectedEventID == selectedID, "same-day refresh must preserve a surviving selection")
+        await store.navigate(to: ReviewQuery(date: service.date.addingTimeInterval(86400)))
+        precondition(store.selectedEventID == nil, "date navigation must clear selection")
+        await store.navigate(to: ReviewQuery(date: service.date))
+        store.selectedEventID = "removed-event"
+        await store.reload()
+        precondition(store.selectedEventID == nil, "refresh must clear a removed selection")
+        store.selectedEventID = store.snapshot.events[0].id
         store.draft = "本地修改"
         service.shouldFail = true
         await store.save()
@@ -13,7 +24,7 @@ import Foundation
         precondition(!store.failure!.contains("SECRET"))
         let originalQuery = store.query
         await store.navigate(to: ReviewQuery(date: service.date.addingTimeInterval(86400)))
-        precondition(store.query == originalQuery && store.draft == "本地修改")
+        precondition(store.query == originalQuery && store.draft == "本地修改" && store.selectedEventID == selectedID)
         service.shouldFail = false
         await store.save()
         precondition(!store.isDirty && store.snapshot.report?.markdown == "本地修改")
@@ -50,8 +61,10 @@ import Foundation
         service.shouldFail = false
         await store.reload()
         store.draft = "保留删除期间的手工草稿"
+        store.selectedEventID = store.snapshot.events[0].id
         await store.refreshAfterDeletion()
         precondition(store.snapshot.events.isEmpty && store.snapshot.report == nil && store.isDirty && store.draft == "保留删除期间的手工草稿")
-        print("PASS: failed save preserves draft; errors redact backend details; dirty navigation blocks; successful save; in-flight edit preserved; stale load ignored; unconnected empty; collection and Agent default off; failed settings remain unapplied")
+        precondition(store.selectedEventID == nil)
+        print("PASS: refresh preserves valid selection; date navigation and deletion clear selection; failed save preserves draft; errors redact backend details; dirty navigation blocks; successful save; in-flight edit preserved; stale load ignored; unconnected empty; collection and Agent default off; failed settings remain unapplied")
     }
 }
