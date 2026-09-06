@@ -91,7 +91,8 @@ struct ReportView: View {
                 Picker("内容模式", selection: $preview) {
                     Text("阅读").tag(true)
                     Text("编辑").tag(false)
-                }.pickerStyle(.segmented).frame(width: 140).accessibilityIdentifier("report.mode")
+                }.pickerStyle(.segmented).labelsHidden().accessibilityLabel("内容模式")
+                    .frame(width: 140).accessibilityIdentifier("report.mode")
                 if store.isWorking { ProgressView().controlSize(.small) }
                 Spacer()
                 if store.service.capabilities.saveReport {
