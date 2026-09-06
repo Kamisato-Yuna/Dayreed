@@ -47,3 +47,5 @@ let edited = try reports.edit(id: saved.id, markdown: editedMarkdown,
 删除记录、全部删除和按日保留清理沿用 `DayreedStore` 的 API。schema 2 使用普通主键、事务和级联关联，并在删除记录的同一事务删除涉及它的报告全文、候选全文及标注；仅删除外键关联会遗留正文，因此不能只依赖关联表的级联。没有来源行的手工报告也会按日期删除：区间删除清除与区间相交的整份报告，保留清理删除开始时间早于保留日的整份报告（含跨日周报），全部删除清除所有报告。此行为不承诺清除文件系统快照或外部备份。
 
 只读 Agent 使用 `DayreedStore(directory:access: .readOnly)`；首次 schema 升级应由 App 的可写 Store 完成。只读服务不能接受候选、修改报告或发起 Provider 分析。
+
+删除前可用只读的 `store.deletionSummary(in:)` 获取 `recordCount`、`reportCount`、`candidateCount` 和 `isEmpty`。计数包括日期相交与跨界来源级联的并集，不会重复计数；零条采集记录仍可能存在待删除手工报告。这是当前实际数据的预览，并发写入可能改变稍后删除时的数量。

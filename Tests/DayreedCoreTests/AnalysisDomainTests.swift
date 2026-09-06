@@ -281,3 +281,30 @@ func manualReportsWithoutSourceRowsFollowDateDeletion(_ method: String) throws {
     let bytes = try Data(contentsOf: fixture.directory.appendingPathComponent("records.sqlite3"))
     #expect(bytes.range(of: Data("SYNTHETIC_MANUAL_WITHOUT_SOURCE".utf8)) == nil)
 }
+
+@Test func deletionSummaryMatchesDateAndCrossBoundaryCascadeUnion() throws {
+    let fixture = try DomainFixture(); defer { fixture.cleanup() }
+    let boundary = try #require(ISO8601DateFormatter().date(from: "2026-09-07T00:00:00Z"))
+    try fixture.sample(at: boundary.addingTimeInterval(-30))
+    try fixture.sample(at: boundary.addingTimeInterval(30))
+    let previous = try ReportPeriod(kind: .daily, containing: boundary.addingTimeInterval(-1), timeZoneIdentifier: "UTC")
+    let current = try ReportPeriod(kind: .daily, containing: boundary, timeZoneIdentifier: "UTC")
+    let later = try ReportPeriod(kind: .daily, containing: boundary.addingTimeInterval(2 * 86_400), timeZoneIdentifier: "UTC")
+    let service = ReportService(store: fixture.store)
+    for period in [previous, current] {
+        _ = try service.acceptCandidate(id: service.generateCandidate(for: period).id)
+        _ = try service.generateCandidate(for: period)
+    }
+    _ = try service.create(for: later, markdown: "无记录手工报告")
+    let reopened = try DayreedStore(directory: fixture.directory, access: .readOnly)
+    let summary = try reopened.deletionSummary(in: previous.interval)
+    #expect(summary.recordCount == 1 && summary.reportCount == 2 && summary.candidateCount == 2)
+    #expect(!summary.isEmpty)
+    #expect(try reopened.deletionSummary(in: later.interval).recordCount == 0)
+    #expect(try reopened.deletionSummary(in: later.interval).reportCount == 1)
+    #expect(try reopened.deletionSummary(in: DateInterval(start: boundary, duration: 0)).isEmpty)
+    try fixture.store.deleteRecords(in: previous.interval)
+    #expect(try fixture.store.report(for: previous) == nil && fixture.store.report(for: current) == nil)
+    #expect(try service.candidates(for: previous).isEmpty && service.candidates(for: current).isEmpty)
+    #expect(try fixture.store.report(for: later) != nil)
+}

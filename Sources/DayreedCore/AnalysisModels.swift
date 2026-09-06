@@ -238,3 +238,10 @@ public struct ReportPage: Codable, Equatable, Sendable {
     public let reports: [ReportDocument]
     public let nextCursor: TimelineCursor?
 }
+
+public struct DeletionSummary: Codable, Equatable, Sendable {
+    public let recordCount: Int
+    public let reportCount: Int
+    public let candidateCount: Int
+    public var isEmpty: Bool { recordCount == 0 && reportCount == 0 && candidateCount == 0 }
+}

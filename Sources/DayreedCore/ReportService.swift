@@ -26,6 +26,51 @@ private struct StoredCandidate: Codable {
 }
 
 extension DayreedStore {
+    /// Read-only count of the union deleted by date overlap and record-reference cascades.
+    /// It is a live preview; a concurrent write can change counts before a later deletion.
+    public func deletionSummary(in interval: DateInterval) throws -> DeletionSummary {
+        try lock.withLock {
+            try validate(interval)
+            guard interval.duration > 0 else { return DeletionSummary(recordCount: 0, reportCount: 0, candidateCount: 0) }
+            return try readTransaction {
+                let records = try statement("SELECT count(*) FROM records WHERE captured_at>=? AND captured_at<?") {
+                    try bind(interval, to: $0); _ = try stepRow($0)
+                    return Int(sqlite3_column_int64($0, 0))
+                }
+                let reports = try statement("""
+                    SELECT count(*) FROM reports WHERE (end>? AND start<?) OR id IN (
+                      SELECT report_id FROM report_sources JOIN records ON records.id=report_sources.record_id
+                      WHERE captured_at>=? AND captured_at<?)
+                    """) {
+                    try bind(interval, to: $0)
+                    try check(sqlite3_bind_double($0, 3, interval.start.timeIntervalSince1970))
+                    try check(sqlite3_bind_double($0, 4, interval.end.timeIntervalSince1970))
+                    _ = try stepRow($0)
+                    return Int(sqlite3_column_int64($0, 0))
+                }
+                var candidateIDs = Set<UUID>()
+                try statement("SELECT value FROM report_candidates WHERE start<?") {
+                    try check(sqlite3_bind_double($0, 1, interval.end.timeIntervalSince1970))
+                    while try stepRow($0) {
+                        let stored: StoredCandidate = try decode(data($0, 0))
+                        if stored.candidate.period.interval.end > interval.start { candidateIDs.insert(stored.candidate.id) }
+                    }
+                }
+                try statement("""
+                    SELECT candidate_id FROM candidate_sources JOIN records ON records.id=candidate_sources.record_id
+                    WHERE captured_at>=? AND captured_at<?
+                    """) {
+                    try bind(interval, to: $0)
+                    while try stepRow($0) {
+                        guard let id = string($0, 0).flatMap(UUID.init(uuidString:)) else { throw DayreedStoreError.invalidRecord }
+                        candidateIDs.insert(id)
+                    }
+                }
+                return DeletionSummary(recordCount: records, reportCount: reports, candidateCount: candidateIDs.count)
+            }
+        }
+    }
+
     public func createReport(for period: ReportPeriod, markdown: String) throws -> ReportDocument {
         try validateMarkdown(markdown)
         return try lock.withLock {
