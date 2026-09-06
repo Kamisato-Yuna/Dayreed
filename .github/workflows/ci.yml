@@ -42,3 +42,4 @@ jobs:
           build/debug/Dayreed.app/Contents/Helpers/dayreed status --json
           plutil -lint build/debug/Dayreed.app/Contents/Info.plist
           python3 Tests/Scripts/test_release.py
+          python3 Tests/Scripts/test_dmg.py

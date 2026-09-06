@@ -1,6 +1,6 @@
 # Dayreed 更新与本地发布准备
 
-关联 [Issue #6](https://github.com/Kamisato-Yuna/Dayreed/issues/6)。脚本可构建、签名、公证并准备本地资产；不会创建 tag、上传 GitHub Release 或覆盖已有资产。功能集成完成后，由维护者串行执行真实公证、安装更新验收与发布。仅有编译/合成测试通过不代表已发布或客户端更新验收完成。
+关联 [Issue #6](https://github.com/Kamisato-Yuna/Dayreed/issues/6)。手动分发使用 DMG，App 内更新使用 ZIP 和签名 appcast。脚本可构建、签名、公证并准备本地资产；不会创建 tag、上传 GitHub Release 或覆盖已有资产。功能集成完成后，由维护者串行执行真实公证、安装更新验收与发布。仅有编译/合成测试通过不代表已发布或客户端更新验收完成。
 
 ## 更新服务与 App 接线
 
@@ -31,7 +31,7 @@ import DayreedUpdate
 
 `https://github.com/Kamisato-Yuna/Dayreed/releases/latest/download/appcast.xml`
 
-delegate 返回固定 feed，已有 `SUFeedURL` defaults 不能覆盖它。选中更新的 ZIP URL 必须属于 `https://github.com/Kamisato-Yuna/Dayreed/releases/download/v<version>/Dayreed-<version>.zip`；第三方/旧仓库、HTTP、用户信息、端口、query、fragment、编码路径和非 ZIP 来源会被拒绝。发行脚本当前只生成完整 ZIP，不生成 delta；客户端也检查 delta enclosure，非许可 ZIP 会拒绝整项更新。GitHub Release 自身的 HTTPS 重定向会经过 GitHub 的资产 CDN；最终下载字节仍必须通过 EdDSA 验证。
+delegate 返回固定 feed，已有 `SUFeedURL` defaults 不能覆盖它。选中更新的 ZIP URL 必须属于 `https://github.com/Kamisato-Yuna/Dayreed/releases/download/v<version>/Dayreed-<version>.zip`；第三方/旧仓库、HTTP、用户信息、端口、query、fragment、编码路径和非 ZIP 来源会被拒绝。更新脚本生成完整 ZIP，不生成 delta；手动下载另提供 DMG；客户端也检查 delta enclosure，非许可 ZIP 会拒绝整项更新。GitHub Release 自身的 HTTPS 重定向会经过 GitHub 的资产 CDN；最终下载字节仍必须通过 EdDSA 验证。
 
 feed 本身要求签名，且失败不会超时降级；ZIP 在提取前验证。原因是更新链会安装可执行代码，Git/版本号/普通测试无法证明客户端收到的远端 feed 和 ZIP 是维护者签署的原始字节。不存在旧 feed、旧命名空间或旧密钥迁移。
 
@@ -78,13 +78,23 @@ chmod 600 script/release.env
 
 生成器缓存隔离在本次临时目录，已有输出目录直接拒绝。失败不会覆盖原发布资产，也不会上传任何 GitHub 资产；Apple 失败记录和已签名副本留在 `docs/local/` 供本地复核。签名、公证、EdDSA 是独立步骤，任何一步失败都不等价于已完成更新。
 
-已公证并 staple 的候选 App 也可重复准备到另一个新目录：
+已公证并 staple 的候选 App 也可重复准备更新资产到另一个新目录：
 
 ```sh
 python3 script/prepare_appcast.py /path/to/Dayreed.app build/releases/another-candidate
 ```
 
-发布由维护者另行授权执行：核对工作区与目标源码提交，完成中文发布说明，从该提交制作 App 对应的签名 `v<version>` tag，将 `Dayreed-<version>.zip` 和 `appcast.xml` 放在 **同一个** Dayreed Release；不得覆盖已发布同版本资产或移动 tag。feed 指向 GitHub latest Release，因此不能把旧 feed 误留在新 latest Release。先创建 draft Release 并核对实际下载、解压、签名、安装和启动，再决定公开发布。这里不提供自动发布或强制覆盖开关。CI 继续负责无凭据构建与测试，证书、私钥和密码不上传到仓库或 GitHub Actions；每次发布单独核对目标制品的签名与公证结果，不以另一制品的成功替代。
+已有已签名、公证并装订票据的 App 可直接补做 DMG，无需重建或再次提交 App ZIP：
+
+```sh
+python3 script/prepare_dmg.py /path/to/Dayreed.app build/releases/candidate/Dayreed-0.1.0.dmg
+```
+
+DMG 使用只读压缩 UDZO/HFS+，包含原样 `Dayreed.app`、指向 `/Applications` 的快捷方式和中文安装说明，无额外运行时依赖或 Finder 自动化权限。完整 `notarize.sh` 流程也会生成 DMG：容器使用同一 Developer ID 签名，单独提交 Apple 公证并装订票据，然后验证签名与 Gatekeeper。源 App 及其内部 CLI、框架符号链接保持原样；不会启动 App 或替换正在运行的版本。DMG 失败记录留在 ignored `docs/local/releases`，成功前不写最终 DMG 路径，已有 ZIP/feed 和同名 DMG 均不会被覆盖。
+
+分发步骤依据 [Apple 的 macOS 软件打包说明](https://developer.apple.com/documentation/xcode/packaging-mac-software-for-distribution)。DMG 验收需只读挂载，检查应用程序快捷方式、App/CLI 版本和复制后的 App 签名，再卸载本次挂载点。
+
+发布由维护者另行授权执行：核对工作区与目标源码提交，完成中文发布说明，从该提交制作 App 对应的签名 `v<version>` tag，将 `Dayreed-<version>.dmg`、`Dayreed-<version>.zip` 和 `appcast.xml` 放在 **同一个** Dayreed Release；不得覆盖已发布同版本资产或移动 tag。feed 指向 GitHub latest Release，因此不能把旧 feed 误留在新 latest Release。先创建 draft Release 并核对实际下载、解压、签名、安装和启动，再决定公开发布。这里不提供自动发布或强制覆盖开关。CI 继续负责无凭据构建与测试，证书、私钥和密码不上传到仓库或 GitHub Actions；每次发布单独核对目标制品的签名与公证结果，不以另一制品的成功替代。
 
 ## 验证与真实客户端验收
 
@@ -92,6 +102,7 @@ python3 script/prepare_appcast.py /path/to/Dayreed.app build/releases/another-ca
 swift test --filter DayreedUpdateTests
 ./script/build_app.sh debug
 python3 Tests/Scripts/test_release.py
+python3 Tests/Scripts/test_dmg.py
 ```
 
 测试使用临时 App/偏好域与公开 RFC 8032 测试密钥，不使用真实更新私钥或用户记录。覆盖：实际 Sparkle delegate 压过旧 feed defaults、关闭 profiling、来源拒绝、错误/无更新/取消状态、framework 与安装脚本打包结构、签名 ZIP/feed 生成验证、异钥和篡改拒绝、版本来源、配置权限与 shell 注入拒绝、构建失败和已有输出保留。Sparkle 工具需要系统文件类型识别服务；沙箱拒绝 LaunchServices 时应在允许的本地测试环境运行，不能把失败报告成通过。

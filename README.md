@@ -44,6 +44,10 @@ docs/                 对外使用和维护文档
 
 临时计划、实验、验收记录放入被忽略的 `docs/local/`；Agent 配置、构建产物和凭据也不进入 Git。旧 Dayflow 仓库已退役，仅作参考；此仓库使用独立历史、身份和目录，不自动访问或迁移旧应用数据。
 
+## 安装
+
+从本仓库 Release 下载 `Dayreed-<版本>.dmg`，打开后将 `Dayreed.app` 拖入 `Applications`（应用程序），再从应用程序启动。更新已有版本前先退出旧 App。DMG 是手动安装包；App 内自动更新使用同一 Release 的签名 ZIP 和 appcast。当前尚未创建正式 Release。
+
 ## 使用说明
 
 - [App 回顾与设置](docs/APP_GUIDE.md)

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build, sign, notarize, staple, and prepare local Dayreed ZIP + signed appcast."""
+"""Build, sign, notarize, staple, and prepare local Dayreed DMG, update ZIP and signed appcast."""
 import sys
 sys.dont_write_bytecode = True
 import argparse
@@ -10,6 +10,7 @@ import re
 import subprocess
 import tempfile
 from prepare_appcast import generate
+from prepare_dmg import prepare as prepare_dmg
 from release_support import ROOT, TOOLS, ACCOUNT, release_config, validate_bundle
 
 
@@ -58,7 +59,9 @@ def main():
                     ['codesign', '--verify', '--deep', '--strict'], ['spctl', '--assess', '--type', 'execute']]:
         subprocess.run([*command, str(app)], check=True)
     validate_bundle(app)
-    print('Prepared local assets:', generate(app, args.output))
+    assets = generate(app, args.output)
+    prepare_dmg(app, assets / ('Dayreed-' + info['CFBundleShortVersionString'] + '.dmg'), config, run / 'dmg')
+    print('Prepared local assets:', assets)
     print('Notarization record:', run / 'notary-result.json')
     print('No tag or GitHub Release was created.')
 
