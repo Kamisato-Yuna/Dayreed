@@ -24,6 +24,7 @@ private func syntheticOutput(_ id: UUID, status: String = "ok") -> String {
     let body = try #require(request.httpBody)
     let json = try #require(JSONSerialization.jsonObject(with: body) as? [String: Any])
     #expect(json["tools"] == nil)
+    #expect(json["reasoning_split"] == nil)
     #expect(json["store"] as? Bool == false)
     let content = String(decoding: body, as: UTF8.self)
     #expect(content.contains("SYNTHETIC_AX_SECRET"))
@@ -202,4 +203,39 @@ private final class RetryRemovalCredentials: ProviderCredentialStore, @unchecked
     #expect(try settings.configurations().isEmpty)
     #expect(try credentials.read(for: configuration.id) == nil)
     #expect(try fixture.store.analysisContext().selectedProviderID == nil)
+}
+
+
+@Test func minimaxRequestsSeparateReasoningWithoutRelaxingAnswerValidation() throws {
+    let id = UUID()
+    let observation = ProviderObservation(recordID: id, capturedAt: .now,
+        applicationBundleIdentifier: "test.synthetic", evidence: [], sources: [.application])
+    let config = ProviderConfiguration(name: "Synthetic MiniMax", kind: .openAICompatible, model: "MiniMax-M3",
+        endpoint: URL(string: "https://gateway.example.invalid/v1/chat/completions"))
+    let request = try OpenAICompatibleProvider(configuration: config, apiKey: nil).makeRequest([observation])
+    let body = try #require(request.httpBody)
+    let json = try #require(JSONSerialization.jsonObject(with: body) as? [String: Any])
+    #expect(json["reasoning_split"] as? Bool == true)
+    #expect(json["stream"] as? Bool == false && json["store"] as? Bool == false)
+    #expect(json["tools"] == nil)
+
+    func response(_ content: String) throws -> Data {
+        // Reconstructed from observed response structure; no real endpoint, reasoning or activity.
+        try JSONSerialization.data(withJSONObject: ["choices": [["finish_reason": "stop", "message": [
+            "content": content,
+            "reasoning_details": [["type": "text", "text": "SYNTHETIC_REASONING_DO_NOT_PERSIST"]]
+        ]]]])
+    }
+    let valid = syntheticOutput(id)
+    #expect(throws: AnalysisError.invalidResponse) {
+        try OpenAICompatibleProvider.parse(response("<think>SYNTHETIC_REASONING</think>\n" + valid), expectedIDs: [id])
+    }
+    let result = try OpenAICompatibleProvider.parse(response(valid), expectedIDs: [id])
+    #expect(result.count == 1 && result[0].summary == "抽象摘要")
+    #expect(throws: AnalysisError.invalidResponse) {
+        try OpenAICompatibleProvider.parse(response(syntheticOutput(UUID())), expectedIDs: [id])
+    }
+    #expect(throws: AnalysisError.refused) {
+        try OpenAICompatibleProvider.parse(response(syntheticOutput(id, status: "refused")), expectedIDs: [id])
+    }
 }

@@ -31,10 +31,16 @@ public struct OpenAICompatibleProvider: AnalysisProvider, CustomStringConvertibl
             parts.append(["type": "text", "text": "Image evidence \(image.id.uuidString), recordID \(image.recordID.uuidString)"])
             parts.append(["type": "image_url", "image_url": ["url": "data:\(image.mediaType);base64,\(image.data.base64EncodedString())"]])
         }
-        let body: [String: Any] = [
+        var body: [String: Any] = [
             "model": configuration.model, "stream": false, "store": false,
             "messages": [["role": "system", "content": AnalysisPrompt.instruction], ["role": "user", "content": parts]],
         ]
+        // MiniMax otherwise puts <think> reasoning into content, which is not JSON.
+        // Use its documented output-format switch, including when routed through a gateway.
+        // Other model families must not receive this provider-specific parameter.
+        if configuration.model.lowercased().hasPrefix("minimax-") {
+            body["reasoning_split"] = true
+        }
         let data = try JSONSerialization.data(withJSONObject: body)
         guard data.count <= 16 * 1_024 * 1_024 else { throw AnalysisError.inputTooLarge }
         var request = URLRequest(url: endpoint, cachePolicy: .reloadIgnoringLocalCacheData,
