@@ -11,7 +11,7 @@ compile_module() {
   local name="$1"
   shift
   local sources=()
-  while IFS= read -r file; do sources+=("$file"); done < <(rg --files "Sources/$name" -g '*.swift' | sort)
+  while IFS= read -r file; do sources+=("$file"); done < <(/usr/bin/find "Sources/$name" -type f -name '*.swift' -print | LC_ALL=C sort)
   swiftc "${COMMON[@]}" -emit-module -emit-library -module-name "$name" \
     -emit-module-path "$MODULE_DIR/$name.swiftmodule" -I "$MODULE_DIR" -L "$MODULE_DIR" \
     -Xlinker -install_name -Xlinker "@rpath/lib$name.dylib" -Xlinker -rpath -Xlinker @loader_path \
