@@ -25,7 +25,7 @@ with open(sys.argv[1], "wb") as plist_file:
     plistlib.dump(
         {
             "CFBundleIdentifier": "YunaBuild.Dayreed",
-            "CFBundleShortVersionString": "1.0.0",
+            "CFBundleShortVersionString": "0.1.0",
             "CFBundleVersion": "1",
         },
         plist_file,
@@ -37,7 +37,7 @@ cat > "$helper_path" <<'HELPER'
 #!/usr/bin/env bash
 
 if [[ "${1:-}" == "version" && "${2:-}" == "--json" ]]; then
-  printf '%s\n' '{"name":"Dayreed","version":"1.0.0","build":1,"bundleIdentifier":"YunaBuild.Dayreed","minimumSystemVersion":"26.0"}'
+  printf '%s\n' '{"name":"Dayreed","version":"0.1.0","build":1,"bundleIdentifier":"YunaBuild.Dayreed","minimumSystemVersion":"26.0"}'
   exit 0
 fi
 
@@ -78,7 +78,7 @@ if "$installer" install --app "$app_path" --bin-dir "$version_mismatch_bin_dir";
   exit 1
 fi
 [[ ! -e "$version_mismatch_bin_dir" ]]
-/usr/libexec/PlistBuddy -c 'Set :CFBundleShortVersionString 1.0.0' "$app_path/Contents/Info.plist"
+/usr/libexec/PlistBuddy -c 'Set :CFBundleShortVersionString 0.1.0' "$app_path/Contents/Info.plist"
 
 build_mismatch_bin_dir="${test_root}/build mismatch"
 /usr/libexec/PlistBuddy -c 'Set :CFBundleVersion 2' "$app_path/Contents/Info.plist"

@@ -5,7 +5,7 @@
 
 个人工作记录与回顾工具，面向 macOS 26。用原生界面检查时间线、日报和周报，通过本地 CLI/MCP 向本人使用的 Agent 提供记录。
 
-**1.0 正在开发与验收，尚无正式 Release。** 已实现独立多源采集、SQLite 证据存储、原生回顾界面、可编辑日报周报和只读 CLI/MCP；正式图标由 Icon Composer 分层制作，更新与签名分发工具仅面向本仓库。已接入 OpenAI 兼容接口及 Codex/Claude CLI 分析 Provider，自动分析需单独开启。真实权限、选定 Provider、公证和安装更新验收尚未全部完成。
+**0.1 是早期开发版本，尚无正式 Release。** 已实现独立多源采集、SQLite 证据存储、原生回顾界面、可编辑日报周报和只读 CLI/MCP；正式图标由 Icon Composer 分层制作，更新与签名分发工具仅面向本仓库。已接入 OpenAI 兼容接口及 Codex/Claude CLI 分析 Provider，自动分析需单独开启。真实采集、Provider 配置与分析体验、安装更新仍需持续验证和完善；已实现功能不代表达到 1.0 的可用性。
 
 ## 产品方向
 
@@ -55,6 +55,6 @@ docs/                 对外使用和维护文档
 
 ## 参与与发布
 
-由 [@Kamisato-Yuna](https://github.com/Kamisato-Yuna) 个人维护。请先阅读 [贡献指南](CONTRIBUTING.md)、[安全说明](SECURITY.md)和[发布说明](docs/RELEASING.md)。功能计划通过 Issues 和 1.0 milestone 管理。
+由 [@Kamisato-Yuna](https://github.com/Kamisato-Yuna) 个人维护。请先阅读 [贡献指南](CONTRIBUTING.md)、[安全说明](SECURITY.md)和[发布说明](docs/RELEASING.md)。功能计划通过 Issues 和 0.1 milestone 管理。
 
 代码使用 [MIT License](LICENSE)。Sparkle 使用其独立许可，分发包保留相应版权和许可说明。

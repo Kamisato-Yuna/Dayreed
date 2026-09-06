@@ -21,7 +21,7 @@ ditto "$SPARKLE_DIR/Sparkle.framework" "$APP_DIR/Contents/Frameworks/Sparkle.fra
 python3 - "$APP_DIR" <<'PY'
 import plistlib,sys
 from pathlib import Path
-p={'CFBundleExecutable':'DayreedReviewPreview','CFBundleIdentifier':'YunaBuild.Dayreed.UIReview','CFBundleName':'Dayreed Review Preview','CFBundleShortVersionString':'1.0.0','CFBundleVersion':'1','CFBundlePackageType':'APPL','NSPrincipalClass':'NSApplication','LSMinimumSystemVersion':'26.0','NSHighResolutionCapable':True}
+p={'CFBundleExecutable':'DayreedReviewPreview','CFBundleIdentifier':'YunaBuild.Dayreed.UIReview','CFBundleName':'Dayreed Review Preview','CFBundleShortVersionString':'0.1.0','CFBundleVersion':'1','CFBundlePackageType':'APPL','NSPrincipalClass':'NSApplication','LSMinimumSystemVersion':'26.0','NSHighResolutionCapable':True}
 plistlib.dump(p,open(Path(sys.argv[1])/'Contents/Info.plist','wb'))
 PY
 printf '%s\n' "$APP_DIR"

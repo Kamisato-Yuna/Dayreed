@@ -104,6 +104,6 @@ python3 Tests/Scripts/test_release.py
 4. 再检查，证明没有可安装更新且不重复安装；分别记录无网络、下载取消等真实状态。
 5. 通过隔离测试制品验证异常来源、损坏 ZIP、异钥/损坏 feed 的拒绝。不得修改生产 App 以添加任意 feed 开关，也不得用本机 fixture 或签名工具验证代替实际客户端拒绝证据。
 
-此时尚未完成真实公证或上述客户端路径时，应保持 Issue #6 未完成，不称为完整 1.0 发布。
+此时尚未完成真实公证或上述客户端路径时，应保持 Issue #6 未完成，不称为已完成验收的发布。
 
 官方依据：[集成与签名 feed](https://sparkle-project.org/documentation/)、[程序化 API](https://sparkle-project.org/documentation/programmatic-setup/)、[设置与安全配置](https://sparkle-project.org/documentation/customization/)、[嵌套签名顺序](https://sparkle-project.org/documentation/sandboxing/)。
