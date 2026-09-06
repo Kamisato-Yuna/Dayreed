@@ -115,7 +115,7 @@ struct ReviewPreferences: Equatable, Sendable {
 
 /// Errors shown to users are intentionally bounded. Backend errors may contain capture content or secrets.
 enum ReviewServiceError: Error, LocalizedError {
-    case unavailable, failed, conflict, notConfigured, noEvidence, paused, sourcesDisabled, unsupportedImages, credentials, cancelled, invalidConfiguration
+    case unavailable, failed, conflict, notConfigured, noEvidence, paused, sourcesDisabled, unsupportedImages, credentials, cancelled, invalidConfiguration, invalidResponse
     var errorDescription: String? {
         switch self {
         case .notConfigured: "请先在设置中配置并选定分析 Provider。"
@@ -125,6 +125,7 @@ enum ReviewServiceError: Error, LocalizedError {
         case .unsupportedImages: "选定的 Provider 不支持截图。可选择支持图片的模型，或只启用历史来源。"
         case .credentials: "Provider 凭据不可用，请在设置中检查 Keychain 凭据或选定的 CLI 登录目录。"
         case .cancelled: "操作已取消，原有报告保持不变。"
+        case .invalidResponse: "Provider 返回的结果不符合分析格式，未通过校验的结果未保存。请检查所选模型与接口兼容性后重试。"
         case .invalidConfiguration: "Provider 配置无效，请检查 URL、模型、程序路径和认证方式。"
         case .unavailable: "服务尚未连接。请稍后重试。"
         case .failed: "操作未完成。原有内容已保留，请重试。"

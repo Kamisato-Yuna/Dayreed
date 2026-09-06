@@ -61,7 +61,7 @@ enum LiveReviewMapping {
         let hasContent = supporting.contains { !$0.evidence.isEmpty || $0.applicationBundleIdentifier != nil }
         var result = ReviewEvent(id: event.id.uuidString, start: event.start, end: event.end,
             title: event.title ?? "待分析的采样记录",
-            summary: event.summary ?? (hasContent ? "尚未分析。请先在设置中选定 Provider。" : "没有取得可分析内容，请检查权限与来源质量。"),
+            summary: event.summary ?? (hasContent ? "此记录尚无分析摘要。当前分析状态与操作见上方。" : "没有取得可分析内容，请检查权限与来源质量。"),
             application: Set(supporting.compactMap(\.applicationBundleIdentifier)).sorted().joined(separator: "、"),
             evidence: evidence(supporting))
         result.recordVersions = Dictionary(uniqueKeysWithValues: event.versions.map { ($0.key.uuidString, $0.value) })
@@ -91,6 +91,7 @@ enum LiveReviewMapping {
         case .credentials: .credentials
         case .cancelled: .cancelled
         case .invalidConfiguration: .invalidConfiguration
+        case .invalidResponse: .invalidResponse
         default: .failed
         }
     }

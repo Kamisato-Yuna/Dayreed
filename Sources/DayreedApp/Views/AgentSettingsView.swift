@@ -6,7 +6,7 @@ struct AgentSettingsView: View {
     @State private var message: String?
     var body: some View {
         Section("只读 CLI / MCP") {
-            Text("Agent 1.0 只查询时间线、日报、周报与状态，不提供修改或原始证据工具。显式运行 CLI 无需额外启用开关。")
+            Text("Agent 只查询时间线、日报、周报与状态，不提供修改或原始证据工具。显式运行 CLI 无需额外启用开关。")
             LabeledContent("包内 CLI", value: configuration.helperAvailable ? "已找到可执行文件" : "当前 App 包未包含 CLI")
             Text(configuration.helperURL.path).font(.caption.monospaced()).textSelection(.enabled)
             LabeledContent("默认命令链接", value: configuration.defaultLinkMatches ? "~/.local/bin/dayreed 已指向此 App" : "尚未链接到此 App")

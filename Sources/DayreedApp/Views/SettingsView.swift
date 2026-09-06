@@ -74,7 +74,7 @@ struct SettingsView: View {
             Button("应用") { Task { await store.save() } }
             Button("取消", role: .cancel) { }
         } message: {
-            Text("启用的来源：\(enabledSources)。Provider 仅可分析这些来源。Agent 1.0 只读且不提供原文工具。保留 \(store.draft.retentionDays) 天；到期记录及关联内容会自动清除。系统权限仍由你决定。")
+            Text("启用的来源：\(enabledSources)。Provider 仅可分析这些来源。Agent 只读且不提供原文工具。保留 \(store.draft.retentionDays) 天；到期记录及关联内容会自动清除。系统权限仍由你决定。")
         }
     }
 

@@ -103,6 +103,26 @@ final class LiveAnalysisController {
         catch { throw LiveReviewMapping.error(error) }
     }
 
+    /// Live configuration guidance belongs here, not in a cached record summary.
+    var guidanceText: String {
+        if isConfiguring { return "正在保存 Provider 设置…" }
+        guard selectedID != nil else {
+            return configurations.isEmpty
+                ? "尚未配置 Provider。请在设置中添加并选定用于分析的配置。"
+                : "Provider 已保存，但尚未选定。请在设置的“选定 Provider”中选择用于分析的配置。"
+        }
+        guard context?.settings.hasEnabledSources == true else {
+            return "Provider 已选定；所有分析来源已关闭。请先在设置中启用并应用来源。"
+        }
+        guard context?.paused == false else {
+            return "Provider 已选定；采集已暂停或停止，恢复采集后才能分析。"
+        }
+        if schedule.enabled {
+            return "Provider 已选定；自动分析仅处理当天记录。可用“分析本日”处理当前浏览日期。"
+        }
+        return "Provider 已选定；自动分析未开启。点击“分析本日”开始，或在设置中开启自动分析。"
+    }
+
     var statusText: String {
         switch status.phase {
         case .idle: "尚未分析"

@@ -52,6 +52,7 @@ struct ProviderSettingsView: View {
         }
         Section("分析状态") {
             Text(analysis.statusText)
+            Text(analysis.guidanceText).font(.caption).foregroundStyle(.secondary)
             if analysis.status.phase == .running {
                 Button("取消当前分析") { run { try await analysis.cancel() } }
             }
@@ -66,7 +67,9 @@ struct ProviderSettingsView: View {
         .sheet(item: $editor) { item in
             ProviderEditorView(configuration: item.configuration) { configuration, key in
                 try await analysis.save(configuration, key: key)
-                message = "Provider 已保存；请在列表中选定用于分析的配置。"
+                message = analysis.selectedID == configuration.id
+                    ? "Provider 已保存，当前已选定此配置。"
+                    : "Provider 已保存；如需用于分析，请在“选定 Provider”中选择此配置。"
             }
         }
         .confirmationDialog("删除此 Provider？", isPresented: Binding(get: { removing != nil }, set: { if !$0 { removing = nil } }), titleVisibility: .visible) {

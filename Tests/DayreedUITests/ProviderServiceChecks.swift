@@ -16,16 +16,28 @@ extension LiveServiceChecks {
         let database = try await service.prepare()
         let analysis = service.analysis!
         expect(analysis.selectedID == nil && !analysis.schedule.enabled && credentials.readCount == 0)
+        expect(analysis.guidanceText.contains("尚未配置 Provider"))
         var draft = ProviderDraft()
         draft.name = "合成配置"; draft.model = "synthetic"; draft.endpoint = "http://127.0.0.1/v1/chat/completions"
         let configuration = try draft.configuration()
         try await analysis.save(configuration, key: "TEST_ONLY_KEY")
         expect(analysis.configurations.count == 1 && analysis.selectedID == nil)
+        expect(analysis.guidanceText.contains("已保存，但尚未选定"))
+        expect(!service.capabilities.regenerate && credentials.readCount == 0)
         try await analysis.select(configuration.id)
+        expect(service.capabilities.regenerate)
+        expect(analysis.guidanceText.contains("所有分析来源已关闭"))
         var preferences = try await service.preferences()
         preferences.sources[1].enabled = true
         _ = try await service.save(preferences: preferences)
         expect(try !database.analysisContext().paused)
+        expect(analysis.guidanceText.contains("自动分析未开启"))
+        // Editing the selected configuration must preserve selection and live guidance.
+        try await analysis.save(configuration, key: nil)
+        expect(analysis.selectedID == configuration.id && !analysis.guidanceText.contains("尚未选定"))
+        try await analysis.reload()
+        expect(analysis.selectedID == configuration.id && service.capabilities.regenerate)
+        expect(await provider.calls == 0 && credentials.readCount == 0)
         let query = ReviewQuery(date: .now)
         let day = query.interval.start
         func append(_ date: Date) throws -> UUID {
@@ -34,6 +46,19 @@ extension LiveServiceChecks {
                 evidence: [.text("SYNTHETIC_RAW_NOT_SELECTED", kind: .windowTitle), .text("SYNTHETIC_AX_NOT_SELECTED", kind: .accessibilityText)])).id
         }
         let first = try append(day.addingTimeInterval(3600))
+        let pending = try await service.load(query)
+        expect(pending.events.first?.summary.contains("尚无分析摘要") == true)
+        expect(pending.events.allSatisfy { !$0.summary.contains("选定 Provider") })
+        // Reproduce the observed persisted invalidResponse without network or personal records.
+        await provider.setFailure(.invalidResponse)
+        do { _ = try await service.regenerate(query); preconditionFailure("invalid result accepted") }
+        catch { expect(error as? ReviewServiceError == .invalidResponse) }
+        expect(analysis.status.phase == .failed && analysis.status.error == .invalidResponse)
+        expect(analysis.statusText.contains("不符合分析格式") && !analysis.statusText.contains("配置并选定"))
+        expect(try database.activityAnnotation(recordID: first) == nil)
+        let restored = try await LiveAnalysisController.make(database: database, credentials: credentials, factory: { _ in provider })
+        expect(restored.selectedID == configuration.id && restored.statusText.contains("不符合分析格式"))
+        await provider.setFailure(nil)
         var snapshot = try await service.regenerate(query)
         expect(snapshot.events.first?.title == "合成整理活动")
         let sources = await provider.lastSources
@@ -56,6 +81,7 @@ extension LiveServiceChecks {
         let late = Task { try await service.regenerate(query) }
         try await eventually { await provider.pending != nil }
         try await service.control(.pause)
+        expect(analysis.guidanceText.contains("暂停或停止"))
         await provider.complete()
         do { _ = try await late.value; preconditionFailure("paused late analysis committed") } catch { }
         expect(try database.activityAnnotation(recordID: lateID) == nil)
@@ -79,6 +105,7 @@ extension LiveServiceChecks {
         _ = try await service.save(preferences: preferences)
         let yesterday = try append(day.addingTimeInterval(-3600))
         try await analysis.configureSchedule(enabled: true, everySeconds: 5)
+        expect(analysis.guidanceText.contains("自动分析仅处理当天记录"))
         try await eventually(seconds: 8) { (try? database.activityAnnotation(recordID: lateID)) != nil }
         expect(try database.activityAnnotation(recordID: yesterday) == nil)
         expect(try database.report(for: LiveReviewMapping.period(ReviewQuery(date: .now, kind: .daily))) == nil)
@@ -109,13 +136,14 @@ extension LiveServiceChecks {
         credentials.failWrites = false
         try await analysis.remove(configuration.id)
         expect(analysis.selectedID == nil && analysis.configurations.isEmpty)
+        expect(!service.capabilities.regenerate && analysis.guidanceText.contains("尚未配置 Provider"))
         expect(await service.shutdown())
 
         draft.kind = .codexCLI; draft.executablePath = "relative/codex"
         do { _ = try draft.configuration(); preconditionFailure("relative CLI path accepted") } catch { }
         draft.executablePath = "/tmp/synthetic-codex"; draft.authentication = .existingLogin; draft.loginDirectory = "/tmp/synthetic-login"
         expect(try draft.configuration().cliConfigurationDirectory?.path == "/tmp/synthetic-login")
-        print("PASS: real Provider settings with memory credentials; explicit selection; enabled-source-only inputs; unchanged capture state does not cancel; pause/off reject late results; opt-in current-day auto analysis without reports; key failure stays visible; shutdown; CLI form validation")
+        print("PASS: selected Provider pending records do not claim missing selection; invalidResponse surfaces and survives reload without annotations; live selection/edit/off/pause/schedule guidance; real Provider settings with memory credentials; explicit selection; enabled-source-only inputs; unchanged capture state does not cancel; pause/off reject late results; opt-in current-day auto analysis without reports; key failure stays visible; shutdown; CLI form validation")
     }
 
     @MainActor static func eventually(seconds: Double = 3, _ condition: @escaping @MainActor () async throws -> Bool) async throws {

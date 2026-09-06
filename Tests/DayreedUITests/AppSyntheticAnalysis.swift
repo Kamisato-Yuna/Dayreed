@@ -21,12 +21,15 @@ actor AppSyntheticProvider: AnalysisProvider {
     private(set) var lastSources = Set<AnalysisSource>()
     private(set) var lastEvidenceKinds = Set<EvidenceKind>()
     private var delayed = false
+    private var failure: AnalysisError?
+    func setFailure(_ value: AnalysisError?) { failure = value }
     private(set) var pending: CheckedContinuation<[ActivityClassification], Never>?
     private var result: [ActivityClassification] = []
     func setDelayed(_ value: Bool) { delayed = value }
     func complete() { pending?.resume(returning: result); pending = nil }
     func classify(_ observations: [ProviderObservation]) async throws -> [ActivityClassification] {
         calls += 1
+        if let failure { throw failure }
         lastSources = observations.reduce(into: Set<AnalysisSource>()) { $0.formUnion($1.sources) }
         lastEvidenceKinds = Set(observations.flatMap { $0.evidence.map(\.kind) })
         result = observations.map { ActivityClassification(recordID: $0.recordID, title: "合成整理活动", summary: "仅用于验收的合成活动摘要") }

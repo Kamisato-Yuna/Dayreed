@@ -8,6 +8,7 @@ struct AnalysisStatusView: View {
         HStack {
             VStack(alignment: .leading, spacing: 3) {
                 Text(analysis.statusText)
+                Text(analysis.guidanceText).font(.caption).foregroundStyle(.secondary)
                 Text("已应用来源：\(service.enabledSourceDescription)").font(.caption).foregroundStyle(.secondary)
             }
             Spacer()
