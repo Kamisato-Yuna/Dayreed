@@ -42,7 +42,7 @@ struct TimelineView: View {
                         }
                     }.padding(28).frame(maxWidth: 920, alignment: .leading)
                         .frame(maxWidth: .infinity)
-                }.accessibilityIdentifier("timeline.activities")
+                }
             }
         }
         .background(Color(nsColor: .underPageBackgroundColor))
@@ -120,7 +120,6 @@ private struct TimelineActivityCard: View {
                         Divider()
                         EvidenceList(evidence: event.evidence, canOpen: canOpenEvidence, open: open)
                     }.padding([.horizontal, .bottom], 20)
-                    .accessibilityIdentifier("timeline.detail.\(event.id)")
                 }
             }
             .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 16))

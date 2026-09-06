@@ -26,12 +26,13 @@ import SwiftUI
 
     var body: some Scene {
         Window("Dayreed · 真实适配器合成验收", id: "preview") {
-            Group {
-                if ready { ContentView(service: service) }
-                else if let failure { Text("合成数据库创建失败 · \(failure)") }
-                else { ProgressView("准备合成样本…") }
-            }
-            .safeAreaInset(edge: .bottom) {
+            VStack(spacing: 0) {
+                Group {
+                    if ready { ContentView(service: service) }
+                    else if let failure { Text("合成数据库创建失败 · \(failure)") }
+                    else { ProgressView("准备合成样本…") }
+                }.frame(maxWidth: .infinity, maxHeight: .infinity)
+                Divider()
                 HStack {
                     Text("合成验收 · 昨天长文 / 明天空白").font(.caption).foregroundStyle(.secondary)
                     Spacer()
