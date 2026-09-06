@@ -153,12 +153,7 @@ struct SettingsView: View {
             Text("截图、应用切换、窗口标题和辅助功能文本只在各自启用后供选定的 Provider 分析。凭据由系统 Keychain 管理，不显示在回顾页面或日志中。").font(.callout).foregroundStyle(.secondary)
         }
     }
-    @ViewBuilder private var agent: some View {
-        Section("只读 CLI / MCP") {
-            Text("Agent 1.0 可查询时间线、日报、周报和状态，不提供修改或原始证据工具。")
-            Text("显式运行 CLI 无需额外启用开关。安装脚本位于项目 script/install_cli.sh；正式 App 中的入口将随集成提供。").font(.callout).foregroundStyle(.secondary)
-        }
-    }
+    @ViewBuilder private var agent: some View { AgentSettingsView() }
     @ViewBuilder private var updates: some View {
         Section("应用更新") {
             LabeledContent("当前版本", value: "\(ProductInfo.version) (\(ProductInfo.build))")

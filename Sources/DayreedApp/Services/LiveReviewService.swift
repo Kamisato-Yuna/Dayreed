@@ -85,7 +85,9 @@ final class LiveReviewService: ReviewService {
 
     nonisolated private static func unanalyzedEvent(_ record: CaptureRecordSummary) -> ReviewEvent {
         ReviewEvent(id: record.id.uuidString, start: record.capturedAt, end: record.capturedAt,
-                    title: "待分析的采集记录", summary: "本地证据已记录。配置 Provider 后可分析已启用的来源。",
+                    title: "待分析的采集记录", summary: record.evidence.isEmpty && record.applicationBundleIdentifier == nil
+                        ? "已记录采样状态，但没有取得可分析内容。请检查采集权限与来源质量。"
+                        : "尚未分析。配置 Provider 后可分析已启用的来源。",
                     application: record.applicationBundleIdentifier ?? "",
                     evidence: record.evidence.map { reference in
             let source: EvidenceSource = switch reference.kind {
@@ -103,7 +105,7 @@ final class LiveReviewService: ReviewService {
         let database = try await prepare()
         let raw = try await Task.detached { try database.rawEvidence(id: id) }.value
         guard let raw else { throw ReviewServiceError.failed }
-        evidencePresenter.show(raw)
+        try evidencePresenter.show(raw)
     }
 
     func preferences() async throws -> ReviewPreferences {

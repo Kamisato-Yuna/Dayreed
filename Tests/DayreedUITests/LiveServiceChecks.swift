@@ -2,36 +2,6 @@ import DayreedCapture
 import DayreedCore
 import Foundation
 
-@MainActor final class AppSyntheticEnvironment: CaptureEnvironment {
-    var requests = 0
-    var queries = 0
-    var samples = 0
-    var monitoring = false
-    var active = true
-    var handler: (@MainActor @Sendable (CaptureEnvironmentEvent) -> Void)?
-    var pending: CheckedContinuation<ScreenshotSample, Never>?
-    var delay = false
-    func permissions() -> CapturePermissions { queries += 1; return CapturePermissions(screenRecording: .granted, accessibility: .granted) }
-    func currentApplication() -> ActiveApplication? { ActiveApplication(processIdentifier: 42, bundleIdentifier: "test.synthetic") }
-    func isSessionActive() -> Bool { active }
-    func startMonitoring(_ handler: @escaping @MainActor @Sendable (CaptureEnvironmentEvent) -> Void) { self.handler = handler; monitoring = true }
-    func stopMonitoring() { monitoring = false; handler = nil }
-    func requestScreenRecordingPermission() { requests += 1 }
-    func requestAccessibilityPermission() { requests += 1 }
-    func screenshot(excluding bundleIdentifiers: Set<String>) async -> ScreenshotSample {
-        samples += 1
-        if delay { return await withCheckedContinuation { pending = $0 } }
-        return ScreenshotSample(pngData: Data([1, 2, 3]), quality: .available)
-    }
-    func history(for application: ActiveApplication, windowTitle: Bool, accessibilityText: Bool) async -> HistorySample {
-        samples += 1
-        return HistorySample(windowTitle: windowTitle ? "SYNTHETIC_SECRET_TITLE" : nil,
-                             accessibilityText: accessibilityText ? "SYNTHETIC_SECRET_AX" : nil,
-                             windowTitleQuality: windowTitle ? .available : .disabled,
-                             accessibilityTextQuality: accessibilityText ? .available : .disabled)
-    }
-}
-
 @main struct LiveServiceChecks {
     static func expect(_ value: Bool) { precondition(value) }
     @MainActor static func main() async throws {
@@ -105,6 +75,12 @@ import Foundation
         _ = try await reopened.prepare()
         expect(reopenedEnvironment.monitoring && reopenedEnvironment.requests == 0)
         reopened.control(.stop)
+        let agent = AgentConfiguration(appURL: URL(fileURLWithPath: "/tmp/Dayreed 空格\"测试.app"))
+        let json = try JSONSerialization.jsonObject(with: Data(agent.mcpJSON().utf8)) as! [String: Any]
+        let servers = json["mcpServers"] as! [String: [String: Any]]
+        expect(servers["dayreed"]?["command"] as? String == agent.helperURL.path)
+        expect(servers["dayreed"]?["args"] as? [String] == ["mcp"])
+        expect(AgentConfiguration.shellQuote("a'b") == "'a'\"'\"'b'")
         print("PASS: all-off startup has no permission queries, prompts or sampling; independent sources; persistence; redacted lists; pause rejects late result; old records stay readable; all pages load; deletion counts, cascades and refreshes; saved sources resume on next launch without prompts")
     }
 }

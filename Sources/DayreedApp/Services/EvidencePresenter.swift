@@ -6,7 +6,7 @@ import DayreedCore
 final class EvidencePresenter: NSObject, NSWindowDelegate {
     private var window: NSWindow?
 
-    func show(_ evidence: RawEvidence) {
+    func show(_ evidence: RawEvidence) throws {
         close()
         let panel = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 780, height: 560),
                              styleMask: [.titled, .closable, .resizable], backing: .buffered, defer: false)
@@ -17,7 +17,8 @@ final class EvidencePresenter: NSObject, NSWindowDelegate {
         panel.delegate = self
         if evidence.kind == .screenshot {
             let image = NSImageView()
-            image.image = NSImage(data: evidence.data)
+            guard let decoded = NSImage(data: evidence.data) else { throw ReviewServiceError.failed }
+            image.image = decoded
             image.imageScaling = .scaleProportionallyUpOrDown
             panel.contentView = image
         } else {

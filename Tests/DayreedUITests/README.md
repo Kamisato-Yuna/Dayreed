@@ -7,3 +7,5 @@
 交互检查：⌘1/2/3 切换；⌘[/] 浏览日期；⇧⌘T 今天；活动选择、详情、纠正与来源；报告编辑/预览、⌘S 保存、未保存时切换日期和放弃/保留；重新生成确认；独立 Settings；窗口缩放与系统辅助功能设置。状态测试通过不代表这些项目均已经人工验证。
 
 `Tests/DayreedUITests/test_live_services.sh` 编译并检查正式 App 的真实采集适配器。只使用独立 UserDefaults suite、临时数据库与注入的合成操作系统环境；覆盖初始隐私、来源映射、设置持久化、暂停晚到结果、完整分页、删除级联和日常启动恢复。不会请求实际系统权限、采集桌面或读取用户记录。
+
+`Tests/DayreedUITests/build_live_preview.sh` 生成 `build/live-preview/DayreedLivePreview.app`，用于真实适配器的 GUI 验收。它生成专用截图、标题和 AX 合成证据，使用临时数据库与独立设置域；模拟权限按钮不会操作 TCC，采集操作不会读取真实桌面，退出时清理测试目录。`DAYREED_TEST_BIN_DIR` 可指定刚编译的模块目录以跳过重复构建。
