@@ -1,0 +1,29 @@
+# Local development notes and agent state
+/docs/local/
+/AGENTS.md
+/CLAUDE.md
+/.agents/
+/.claude/
+/.codex/
+/.codegraph/
+
+# Build products and editor state
+/.build/
+/.swiftpm/
+/build/
+/dist/
+DerivedData/
+xcuserdata/
+*.xcuserstate
+.DS_Store
+
+# Local credentials and release configuration
+.env
+.env.*
+!.env.example
+/script/release.env
+*.p8
+*.p12
+*.mobileprovision
+*.provisionprofile
+*.keychain-db

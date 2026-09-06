@@ -1,0 +1,16 @@
+name: 功能建议
+description: 说明个人使用场景和希望改善的体验
+labels: [enhancement]
+body:
+  - type: textarea
+    id: need
+    attributes:
+      label: 使用场景与当前困难
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: 希望实现的结果
+    validations:
+      required: true

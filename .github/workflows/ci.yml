@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  macos:
+    name: macOS 26 build and tests
+    runs-on: macos-26
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Toolchain
+        run: |
+          xcodebuild -version
+          swift --version
+      - name: Build and test
+        run: |
+          swift build
+          swift test
+      - name: Package app and verify CLI metadata
+        run: |
+          ./script/build_app.sh debug
+          build/debug/Dayreed.app/Contents/Helpers/dayreed status --json
+          plutil -lint build/debug/Dayreed.app/Contents/Info.plist

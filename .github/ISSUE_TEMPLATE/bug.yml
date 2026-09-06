@@ -1,0 +1,25 @@
+name: 问题报告
+description: 报告可以复现的错误
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: 请勿上传真实活动内容、数据库、令牌或签名材料。安全问题请使用私密漏洞报告。
+  - type: textarea
+    id: behavior
+    attributes:
+      label: 期望与实际结果
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: 复现步骤
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: Dayreed 与 macOS 版本
+    validations:
+      required: true
