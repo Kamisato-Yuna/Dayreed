@@ -4,6 +4,7 @@ struct ReportView: View {
     @Bindable var store: ReviewStore
     let kind: ReportKind
     @State private var preview = false
+    @State private var candidate: ReviewReportCandidate?
     @State private var showSources = true
 
     var body: some View {
@@ -20,6 +21,20 @@ struct ReportView: View {
                     Text("预览").tag(true)
                 }.pickerStyle(.segmented).frame(width: 130)
             }.padding()
+            if store.snapshot.report?.needsReview == true {
+                StatusBanner(text: "关联活动已纠正，请复核报告；手工内容已保留。", symbol: "exclamationmark.circle")
+            }
+            if !store.snapshot.candidates.isEmpty {
+                HStack {
+                    Text("\(store.snapshot.candidates.count) 份候选稿等待审查").font(.callout)
+                    Spacer()
+                    Menu("审查候选稿") {
+                        ForEach(store.snapshot.candidates) { item in
+                            Button(item.createdAt.formatted(date: .abbreviated, time: .standard)) { candidate = item }
+                        }
+                    }.disabled(store.isDirty || store.isWorking)
+                }.padding(.horizontal).padding(.bottom, 10)
+            }
             Divider()
             if preview {
                 ScrollView {
@@ -62,7 +77,7 @@ struct ReportView: View {
                         .disabled(!store.isDirty || store.isWorking)
                 } else { Text("当前连接只读").font(.caption).foregroundStyle(.secondary) }
             }.padding()
-        }
+        }.sheet(item: $candidate) { ReportCandidateView(candidate: $0, store: store) }
     }
 }
 

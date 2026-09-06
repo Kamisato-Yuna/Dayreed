@@ -12,9 +12,12 @@ mkdir -p "$APP_DIR/Contents/MacOS"
 UI_SOURCES=()
 while IFS= read -r file; do UI_SOURCES+=("$file"); done < <(rg --files Sources/DayreedApp | sort | sed '/\/App\/DayreedApp.swift$/d')
 swiftc -parse-as-library -swift-version 6 -target "$(uname -m)-apple-macosx26.0" \
-  -I "$BIN_DIR" -L "$BIN_DIR" -lDayreedCore -lDayreedCapture "${UI_SOURCES[@]}" \
+  -I "$BIN_DIR" -L "$BIN_DIR" -lDayreedCore -lDayreedCapture -lDayreedUpdate -F "$BIN_DIR" -framework Sparkle \
+  -Xlinker -rpath -Xlinker @executable_path/../Frameworks "${UI_SOURCES[@]}" \
   Tests/DayreedUITests/AppSyntheticEnvironment.swift Tests/DayreedUITests/LivePreviewApp.swift \
   -o "$APP_DIR/Contents/MacOS/DayreedLivePreview"
+mkdir -p "$APP_DIR/Contents/Frameworks"
+ditto "$BIN_DIR/Sparkle.framework" "$APP_DIR/Contents/Frameworks/Sparkle.framework"
 python3 - "$APP_DIR" <<'PY'
 import plistlib,sys
 from pathlib import Path

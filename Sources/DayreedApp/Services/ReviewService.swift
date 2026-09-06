@@ -9,6 +9,8 @@ protocol ReviewService {
     func load(_ query: ReviewQuery) async throws -> ReviewSnapshot
     func save(markdown: String, report: ReviewReport?, query: ReviewQuery) async throws -> ReviewReport
     func regenerate(_ query: ReviewQuery) async throws -> ReviewSnapshot
+    func accept(candidate: ReviewReportCandidate, query: ReviewQuery) async throws -> ReviewSnapshot
+    func discard(candidate: ReviewReportCandidate, query: ReviewQuery) async throws -> ReviewSnapshot
     func correct(event: ReviewEvent, title: String, summary: String) async throws -> ReviewEvent
     func open(evidence: ReviewEvidence) async throws
     func preferences() async throws -> ReviewPreferences
@@ -28,4 +30,9 @@ struct UnconnectedReviewService: ReviewService {
     func preferences() async throws -> ReviewPreferences { ReviewPreferences() }
     func save(preferences: ReviewPreferences) async throws -> ReviewPreferences { throw ReviewServiceError.unavailable }
     func checkUpdates() async throws -> String { throw ReviewServiceError.unavailable }
+}
+
+extension ReviewService {
+    func accept(candidate: ReviewReportCandidate, query: ReviewQuery) async throws -> ReviewSnapshot { throw ReviewServiceError.unavailable }
+    func discard(candidate: ReviewReportCandidate, query: ReviewQuery) async throws -> ReviewSnapshot { throw ReviewServiceError.unavailable }
 }

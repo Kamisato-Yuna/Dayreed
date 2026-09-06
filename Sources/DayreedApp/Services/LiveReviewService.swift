@@ -10,6 +10,7 @@ final class LiveReviewService: ReviewService {
     private(set) var initializationFailed = false
     private(set) var revision = 0
     private(set) var deletionInProgress = false
+    private(set) var isReviewWriting = false
     @ObservationIgnored private let persistence: CapturePreferences
     @ObservationIgnored private let directory: @Sendable () throws -> URL
     @ObservationIgnored private let environment: (any CaptureEnvironment)?
@@ -28,7 +29,7 @@ final class LiveReviewService: ReviewService {
     }
 
     var capabilities: ReviewCapabilities {
-        ReviewCapabilities(read: true, openEvidence: true, configure: true)
+        ReviewCapabilities(read: true, saveReport: true, correctEvent: true, openEvidence: true, configure: true, generateReport: true)
     }
     var unavailableReason: String? { initializationFailed ? "本地存储未能打开，请重试。" : nil }
 
@@ -65,39 +66,14 @@ final class LiveReviewService: ReviewService {
     }
 
     func load(_ query: ReviewQuery) async throws -> ReviewSnapshot {
-        let records = try await records(in: query.interval)
-        return ReviewSnapshot(events: records.map(Self.unanalyzedEvent))
+        let database = try await prepare()
+        do { return try await Task.detached { try LiveReviewMapping.snapshot(store: database, query: query) }.value }
+        catch { throw LiveReviewMapping.error(error) }
     }
 
     func records(in interval: DateInterval) async throws -> [CaptureRecordSummary] {
         let database = try await prepare()
-        return try await Task.detached {
-            var records: [CaptureRecordSummary] = []
-            var cursor: CaptureRecordCursor?
-            repeat {
-                let page = try database.records(in: interval, after: cursor)
-                records.append(contentsOf: page.records)
-                cursor = page.nextCursor
-            } while cursor != nil
-            return records
-        }.value
-    }
-
-    nonisolated private static func unanalyzedEvent(_ record: CaptureRecordSummary) -> ReviewEvent {
-        ReviewEvent(id: record.id.uuidString, start: record.capturedAt, end: record.capturedAt,
-                    title: "待分析的采集记录", summary: record.evidence.isEmpty && record.applicationBundleIdentifier == nil
-                        ? "已记录采样状态，但没有取得可分析内容。请检查采集权限与来源质量。"
-                        : "尚未分析。配置 Provider 后可分析已启用的来源。",
-                    application: record.applicationBundleIdentifier ?? "",
-                    evidence: record.evidence.map { reference in
-            let source: EvidenceSource = switch reference.kind {
-            case .screenshot: .screenshot
-            case .windowTitle: .windowTitle
-            case .accessibilityText: .accessibility
-            }
-            return ReviewEvidence(id: reference.id.uuidString, source: source,
-                                  capturedAt: record.capturedAt, label: source.title + " · 本机证据")
-        })
+        return try await Task.detached { try LiveReviewMapping.records(store: database, interval: interval) }.value
     }
 
     func open(evidence: ReviewEvidence) async throws {
@@ -140,26 +116,103 @@ final class LiveReviewService: ReviewService {
     func prepareDeletion(date: Date) async throws -> RecordDeletion {
         _ = try await prepare()
         coordinator?.pause()
+        guard !isReviewWriting else { throw ReviewServiceError.failed }
         let interval = Calendar.current.dateInterval(of: .day, for: date)!
-        return RecordDeletion(interval: interval, count: try await records(in: interval).count)
+        let database = try await prepare()
+        let summary = try await Task.detached { try database.deletionSummary(in: interval) }.value
+        return RecordDeletion(interval: interval, count: summary.recordCount, reportCount: summary.reportCount, candidateCount: summary.candidateCount)
     }
 
     func delete(_ deletion: RecordDeletion) async throws {
-        guard !deletionInProgress else { throw ReviewServiceError.failed }
-        let database = try await prepare()
-        coordinator?.pause()
+        guard !deletionInProgress, !isReviewWriting else { throw ReviewServiceError.failed }
         deletionInProgress = true
         defer { deletionInProgress = false }
+        let database = try await prepare()
+        coordinator?.pause()
         // Recheck while paused: a changed count requires a fresh confirmation.
-        guard try await records(in: deletion.interval).count == deletion.count else { throw ReviewServiceError.conflict }
+        let current = try await Task.detached { try database.deletionSummary(in: deletion.interval) }.value
+        guard current.recordCount == deletion.count, current.reportCount == deletion.reportCount, current.candidateCount == deletion.candidateCount else { throw ReviewServiceError.conflict }
         _ = try await Task.detached { try database.deleteRecords(in: deletion.interval) }.value
         evidencePresenter.close()
         revision += 1
     }
 
-    func save(markdown: String, report: ReviewReport?, query: ReviewQuery) async throws -> ReviewReport { throw ReviewServiceError.unavailable }
-    func regenerate(_ query: ReviewQuery) async throws -> ReviewSnapshot { throw ReviewServiceError.unavailable }
-    func correct(event: ReviewEvent, title: String, summary: String) async throws -> ReviewEvent { throw ReviewServiceError.unavailable }
+    func save(markdown: String, report: ReviewReport?, query: ReviewQuery) async throws -> ReviewReport {
+        let database = try await prepare()
+        try beginReviewWrite()
+        defer { isReviewWriting = false }
+        do {
+            return try await Task.detached {
+                let reports = ReportService(store: database)
+                if let report {
+                    guard let id = UUID(uuidString: report.id), let version = report.version else { throw AnalysisError.conflict }
+                    _ = try reports.edit(id: id, markdown: markdown, expectedVersion: version)
+                } else {
+                    _ = try reports.create(for: LiveReviewMapping.period(query), markdown: markdown)
+                }
+                guard let result = try LiveReviewMapping.snapshot(store: database, query: query).report else { throw ReviewServiceError.failed }
+                return result
+            }.value
+        } catch { throw LiveReviewMapping.error(error) }
+    }
+
+    func regenerate(_ query: ReviewQuery) async throws -> ReviewSnapshot {
+        guard query.kind != nil else { throw ReviewServiceError.unavailable }
+        let database = try await prepare()
+        try beginReviewWrite()
+        defer { isReviewWriting = false }
+        do {
+            return try await Task.detached {
+                _ = try ReportService(store: database).generateCandidate(for: LiveReviewMapping.period(query))
+                return try LiveReviewMapping.snapshot(store: database, query: query)
+            }.value
+        } catch { throw LiveReviewMapping.error(error) }
+    }
+
+    func accept(candidate: ReviewReportCandidate, query: ReviewQuery) async throws -> ReviewSnapshot {
+        try await changeCandidate(candidate, query: query, accept: true)
+    }
+    func discard(candidate: ReviewReportCandidate, query: ReviewQuery) async throws -> ReviewSnapshot {
+        try await changeCandidate(candidate, query: query, accept: false)
+    }
+    private func changeCandidate(_ candidate: ReviewReportCandidate, query: ReviewQuery, accept: Bool) async throws -> ReviewSnapshot {
+        guard let id = UUID(uuidString: candidate.id) else { throw ReviewServiceError.failed }
+        let database = try await prepare()
+        try beginReviewWrite()
+        defer { isReviewWriting = false }
+        do {
+            return try await Task.detached {
+                let reports = ReportService(store: database)
+                guard try reports.candidates(for: LiveReviewMapping.period(query)).contains(where: { $0.id == id }) else { throw AnalysisError.notFound }
+                if accept { _ = try reports.acceptCandidate(id: id) }
+                else { try reports.discardCandidate(id: id) }
+                return try LiveReviewMapping.snapshot(store: database, query: query)
+            }.value
+        } catch { throw LiveReviewMapping.error(error) }
+    }
+
+    func correct(event: ReviewEvent, title: String, summary: String) async throws -> ReviewEvent {
+        guard event.isCorrectable else { throw ReviewServiceError.unavailable }
+        let versions = Dictionary(uniqueKeysWithValues: event.recordVersions.compactMap { key, value in UUID(uuidString: key).map { ($0, value) } })
+        guard !versions.isEmpty, versions.count == event.recordVersions.count else { throw ReviewServiceError.failed }
+        let database = try await prepare()
+        try beginReviewWrite()
+        defer { isReviewWriting = false }
+        do {
+            let annotations = try await Task.detached {
+                try database.correctActivities(recordIDs: Array(versions.keys), expectedVersions: versions, title: title, summary: summary)
+            }.value
+            var result = event
+            result.title = title; result.summary = summary
+            result.recordVersions = Dictionary(uniqueKeysWithValues: annotations.map { ($0.classification.recordID.uuidString, $0.version) })
+            result.stateTitle = "已人工纠正 · 重新分析会保留纠正"
+            return result
+        } catch { throw LiveReviewMapping.error(error) }
+    }
+    private func beginReviewWrite() throws {
+        guard !deletionInProgress, !isReviewWriting else { throw ReviewServiceError.failed }
+        isReviewWriting = true
+    }
     func checkUpdates() async throws -> String { throw ReviewServiceError.unavailable }
 }
 
@@ -168,4 +221,8 @@ struct RecordDeletion: Identifiable {
     let id = UUID()
     let interval: DateInterval
     let count: Int
+    let reportCount: Int
+    let candidateCount: Int
+    var isEmpty: Bool { count == 0 && reportCount == 0 && candidateCount == 0 }
+    var summary: String { "\(count) 条采集记录、\(reportCount) 份报告、\(candidateCount) 份候选" }
 }

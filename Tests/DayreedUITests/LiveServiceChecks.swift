@@ -81,6 +81,7 @@ import Foundation
         expect(servers["dayreed"]?["command"] as? String == agent.helperURL.path)
         expect(servers["dayreed"]?["args"] as? [String] == ["mcp"])
         expect(AgentConfiguration.shellQuote("a'b") == "'a'\"'\"'b'")
+        try await checkReports()
         print("PASS: all-off startup has no permission queries, prompts or sampling; independent sources; persistence; redacted lists; pause rejects late result; old records stay readable; all pages load; deletion counts, cascades and refreshes; saved sources resume on next launch without prompts")
     }
 }

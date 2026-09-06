@@ -3,6 +3,8 @@ import Foundation
 struct AgentConfiguration {
     let appURL: URL
     var helperURL: URL { appURL.appendingPathComponent("Contents/Helpers/dayreed") }
+    var installerURL: URL { appURL.appendingPathComponent("Contents/Resources/install_cli.sh") }
+    var installerAvailable: Bool { FileManager.default.isExecutableFile(atPath: installerURL.path) }
     var helperAvailable: Bool { FileManager.default.isExecutableFile(atPath: helperURL.path) }
     var defaultLinkMatches: Bool {
         let link = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".local/bin/dayreed")
@@ -17,6 +19,9 @@ struct AgentConfiguration {
         return result
     }
 
-    var installCommand: String { "./script/install_cli.sh install --app " + Self.shellQuote(appURL.path) }
+    var installCommand: String {
+        let script = installerAvailable ? Self.shellQuote(installerURL.path) : "./script/install_cli.sh"
+        return script + " install --app " + Self.shellQuote(appURL.path)
+    }
     static func shellQuote(_ text: String) -> String { "'" + text.replacingOccurrences(of: "'", with: "'\"'\"'") + "'" }
 }

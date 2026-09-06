@@ -44,25 +44,25 @@ struct CaptureControlView: View {
                     do { deletion = try await service.prepareDeletion(date: deletionDate) }
                     catch { message = "无法读取删除范围；采集保持暂停。" }
                 }
-            }.disabled(working || service.coordinator == nil)
+            }.disabled(working || service.coordinator == nil || service.isReviewWriting)
             Text("先暂停，再确认日期和数量。删除后保持暂停；可自行继续。系统快照与备份不在此删除范围内。").font(.caption).foregroundStyle(.secondary)
             if let message { Text(message).font(.callout) }
         }
         .confirmationDialog("删除此日的本地记录？", isPresented: Binding(get: { deletion != nil }, set: { if !$0 { deletion = nil } }), titleVisibility: .visible) {
             if let deletion {
-                Button("删除 \(deletion.count) 条记录", role: .destructive) {
+                Button("删除所列内容", role: .destructive) {
                     working = true
                     Task {
                         defer { working = false }
-                        do { try await service.delete(deletion); message = "已删除 \(deletion.count) 条记录，采集保持暂停。" }
+                        do { try await service.delete(deletion); message = "已删除 \(deletion.summary)，采集保持暂停。" }
                         catch { message = "删除未完成或范围已变化，请重新查看范围。" }
                     }
-                }.disabled(deletion.count == 0)
+                }.disabled(deletion.isEmpty)
             }
             Button("取消", role: .cancel) { deletion = nil }
         } message: {
             if let deletion {
-                Text("\(deletion.interval.start.formatted(date: .complete, time: .omitted))，共 \(deletion.count) 条记录及其关联证据、报告与候选。此操作不可撤销。")
+                Text("\(deletion.interval.start.formatted(date: .complete, time: .omitted))，共 \(deletion.summary)，包括关联证据。此操作不可撤销。")
             }
         }
     }

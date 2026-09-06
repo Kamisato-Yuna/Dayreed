@@ -14,5 +14,5 @@ fi
 swiftc -module-cache-path "$TEST_DIR/modules" -parse-as-library -swift-version 6 -target "$(uname -m)-apple-macosx26.0" \
   -I "$BIN_DIR" -L "$BIN_DIR" -lDayreedCore -lDayreedCapture \
   Sources/DayreedApp/Models/ReviewModels.swift Sources/DayreedApp/Services/*.swift \
-  Tests/DayreedUITests/AppSyntheticEnvironment.swift Tests/DayreedUITests/LiveServiceChecks.swift -o "$TEST_DIR/checks"
+  Tests/DayreedUITests/AppSyntheticEnvironment.swift Tests/DayreedUITests/LiveServiceChecks.swift Tests/DayreedUITests/ReportServiceChecks.swift -o "$TEST_DIR/checks"
 "$TEST_DIR/checks"

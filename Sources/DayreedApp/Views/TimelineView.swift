@@ -27,7 +27,7 @@ struct TimelineView: View {
                     }.padding(.vertical, 6).tag(event.id)
                     .accessibilityElement(children: .combine)
                     .contextMenu {
-                        if store.service.capabilities.correctEvent {
+                        if store.service.capabilities.correctEvent && event.isCorrectable {
                             Button("纠正记录…") { correction = event }
                         }
                     }
@@ -42,8 +42,9 @@ struct TimelineView: View {
                                     Text("\(selected.start.formatted(date: .omitted, time: .shortened)) – \(selected.end.formatted(date: .omitted, time: .shortened))")
                                         .font(.callout).foregroundStyle(.secondary)
                                 }
+                                if !selected.stateTitle.isEmpty { Text(selected.stateTitle).font(.caption).foregroundStyle(.secondary) }
                                 Text(selected.summary).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
-                                if store.service.capabilities.correctEvent {
+                                if store.service.capabilities.correctEvent && selected.isCorrectable {
                                     Button("纠正记录…", systemImage: "square.and.pencil") { correction = selected }
                                         .disabled(store.isWorking)
                                 }

@@ -19,7 +19,7 @@ struct AgentSettingsView: View {
                 .font(.caption).foregroundStyle(.secondary)
         }
         Section("终端安装") {
-            Text("在 Dayreed 源码目录执行安装脚本，将 CLI 链接到 ~/.local/bin；脚本不会修改 shell 配置。MCP 直接使用包内 CLI，无需此链接。")
+            Text(configuration.installerAvailable ? "在终端执行以下包内安装脚本，将 CLI 链接到 ~/.local/bin；不会修改 shell 配置。MCP 直接使用包内 CLI，无需此链接。" : "在 Dayreed 源码目录执行安装脚本，将 CLI 链接到 ~/.local/bin。MCP 直接使用包内 CLI，无需此链接。")
                 .font(.callout).foregroundStyle(.secondary)
             Text(configuration.installCommand).font(.caption.monospaced()).textSelection(.enabled)
             Button("复制安装命令") { copy { configuration.installCommand } }.disabled(!configuration.helperAvailable)

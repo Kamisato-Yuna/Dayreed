@@ -1,4 +1,5 @@
 import DayreedCore
+import DayreedUpdate
 import SwiftUI
 
 enum SettingsSection: String, CaseIterable, Identifiable {
@@ -30,7 +31,11 @@ struct SettingsView: View {
     @State private var section: SettingsSection = .general
     @State private var store: SettingsStore
     @State private var confirmPrivacy = false
-    init(service: any ReviewService) { _store = State(initialValue: SettingsStore(service: service)) }
+    private let updater: UpdateController?
+    init(service: any ReviewService, updater: UpdateController? = nil) {
+        self.updater = updater
+        _store = State(initialValue: SettingsStore(service: service))
+    }
 
     var body: some View {
         NavigationSplitView {
@@ -91,7 +96,7 @@ struct SettingsView: View {
             Toggle("在菜单栏显示 Dayreed", isOn: $showMenuBar)
         }
         Section("关于 Dayreed") {
-            LabeledContent("版本", value: "\(ProductInfo.version) (\(ProductInfo.build))")
+            LabeledContent("版本", value: AppVersion.display)
             Text("安静地记录，清晰地回顾。个人时间线、日报与周报。").foregroundStyle(.secondary)
             LabeledContent("许可", value: "MIT")
             Link("GitHub 项目", destination: URL(string: ProductInfo.repository)!)
@@ -122,14 +127,8 @@ struct SettingsView: View {
         }.disabled(!store.service.capabilities.configure || store.isWorking)
         if let live = store.service as? LiveReviewService { CaptureControlView(service: live) }
         Section("保留时间") {
-            Picker("原始内容保留", selection: $store.draft.retentionDays) {
-                Text("7 天").tag(7)
-                Text("30 天").tag(30)
-                Text("90 天").tag(90)
-                if ![7, 30, 90].contains(store.draft.retentionDays) {
-                    Text("\(store.draft.retentionDays) 天").tag(store.draft.retentionDays)
-                }
-            }.disabled(!store.service.capabilities.configure || store.isWorking)
+            TextField("原始内容保留天数（1–3650）", value: $store.draft.retentionDays, format: .number)
+                .disabled(!store.service.capabilities.configure || store.isWorking)
             Text("缩短保留时间可能清除到期原始内容。具体清理结果由本地存储服务确认。").font(.caption).foregroundStyle(.secondary)
         }
     }
@@ -155,14 +154,13 @@ struct SettingsView: View {
     }
     @ViewBuilder private var agent: some View { AgentSettingsView() }
     @ViewBuilder private var updates: some View {
-        Section("应用更新") {
-            LabeledContent("当前版本", value: "\(ProductInfo.version) (\(ProductInfo.build))")
-            if store.service.capabilities.checkUpdates {
-                Button("检查更新") { Task { await store.checkUpdates() } }.disabled(store.isWorking)
-            } else {
-                Text("自动更新服务尚未连接。可前往项目发布页查看正式版本。").foregroundStyle(.secondary)
+        if let updater { UpdateSettingsView(controller: updater) }
+        else {
+            Section("应用更新") {
+                LabeledContent("当前版本", value: AppVersion.display)
+                Text("此验收环境未启动更新服务。请使用完整 Dayreed App 检查正式更新。").foregroundStyle(.secondary)
+                Link("打开发布页", destination: URL(string: ProductInfo.repository + "/releases")!)
             }
-            Link("打开发布页", destination: URL(string: ProductInfo.repository + "/releases")!)
         }
     }
 }

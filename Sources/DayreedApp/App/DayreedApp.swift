@@ -1,4 +1,5 @@
 import AppKit
+import DayreedUpdate
 import SwiftUI
 
 @main
@@ -9,6 +10,7 @@ struct DayreedApp: App {
     @AppStorage("showMenuBar") private var showMenuBar = false
     @Environment(\.openWindow) private var openWindow
 
+    @StateObject private var updater = UpdateController()
     private let service: any ReviewService
     @State private var reviewStore: ReviewStore
 
@@ -22,7 +24,7 @@ struct DayreedApp: App {
     var body: some Scene {
         Window("Dayreed", id: "main") {
             ContentView(store: reviewStore)
-                .onAppear { delegate.reviewStore = reviewStore }
+                .onAppear { delegate.reviewStore = reviewStore; updater.start() }
                 .preferredColorScheme(Appearance(rawValue: appearance)?.colorScheme)
                 .frame(minWidth: 840, minHeight: 480)
         }
@@ -39,7 +41,7 @@ struct DayreedApp: App {
         } label: { Image(nsImage: ReedMark.image) }
 
         Settings {
-            SettingsView(service: service)
+            SettingsView(service: service, updater: updater)
                 .preferredColorScheme(Appearance(rawValue: appearance)?.colorScheme)
         }
     }

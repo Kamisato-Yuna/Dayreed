@@ -15,6 +15,7 @@ final class ReviewStore {
     private(set) var failure: String?
     private var loadSequence = 0
     var isDirty: Bool { draft != savedDraft }
+    var canGenerate: Bool { query.kind == nil ? service.capabilities.regenerate : service.capabilities.generateReport }
 
     init(service: any ReviewService, date: Date = .now) {
         self.service = service
@@ -69,7 +70,7 @@ final class ReviewStore {
     }
 
     func regenerate() async {
-        guard service.capabilities.regenerate, !isWorking, !isLoading, !isDirty else { return }
+        guard canGenerate, !isWorking, !isLoading, !isDirty else { return }
         isWorking = true
         message = nil
         failure = nil
@@ -77,12 +78,24 @@ final class ReviewStore {
         do {
             accept(try await service.regenerate(query))
             loaded = true
-            message = "已重新生成"
+            message = query.kind == nil ? "分析已完成" : "候选稿已生成，原报告保持不变。"
+        } catch { fail(error) }
+    }
+
+    func reviewCandidate(_ candidate: ReviewReportCandidate, accept: Bool) async {
+        guard !isWorking, !isLoading, !isDirty else { return }
+        isWorking = true
+        failure = nil
+        defer { isWorking = false }
+        do {
+            let result = try await (accept ? service.accept(candidate: candidate, query: query) : service.discard(candidate: candidate, query: query))
+            self.accept(result)
+            message = accept ? "已采用候选稿" : "已丢弃候选稿，原报告保持不变。"
         } catch { fail(error) }
     }
 
     func correct(_ event: ReviewEvent, title: String, summary: String) async -> Bool {
-        guard service.capabilities.correctEvent, !isWorking else { return false }
+        guard service.capabilities.correctEvent, event.isCorrectable, !isWorking else { return false }
         isWorking = true
         failure = nil
         defer { isWorking = false }
@@ -90,6 +103,8 @@ final class ReviewStore {
             let result = try await service.correct(event: event, title: title, summary: summary)
             if let index = snapshot.events.firstIndex(where: { $0.id == event.id }) { snapshot.events[index] = result }
             message = "已保存纠正"
+            do { snapshot = try await service.load(query) }
+            catch { message = "纠正已保存，但未能刷新完整时间线，请使用刷新按钮重试。" }
             return true
         } catch { fail(error); return false }
     }

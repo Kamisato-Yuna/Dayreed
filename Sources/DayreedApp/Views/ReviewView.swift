@@ -30,11 +30,11 @@ struct ReviewView: View {
         }
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
-                if store.service.capabilities.regenerate {
+                if store.canGenerate {
                     Button(section == .timeline ? "重新分析" : "重新生成", systemImage: "arrow.trianglehead.2.clockwise.rotate.90") {
                         confirmRegeneration = true
                     }.disabled(store.isWorking || store.isLoading || store.isDirty || !store.loaded)
-                    .help(store.isDirty ? "请先保存修改" : "使用当前 Provider 和已启用的来源重新生成")
+                    .help(store.isDirty ? "请先保存修改" : (section == .timeline ? "分析已启用来源" : "从已保存摘要生成候选报告"))
                 }
             }
         }
@@ -42,7 +42,7 @@ struct ReviewView: View {
             Button("继续生成") { Task { await store.regenerate() } }
             Button("取消", role: .cancel) { }
         } message: {
-            Text("选定的 Provider 将分析本时段已启用的来源，并替换当前\(section == .timeline ? "分析结果" : "报告内容")。")
+            Text(section == .timeline ? "选定的 Provider 将分析本时段已启用的来源，保留人工纠正。" : "将本时段已保存的活动摘要整理为报告候选稿。原报告保持不变，由你审查后决定是否替换。")
         }
     }
 }

@@ -37,6 +37,9 @@ struct ReviewEvent: Identifiable, Equatable, Sendable {
     var summary: String
     let application: String
     var evidence: [ReviewEvidence]
+    var recordVersions: [String: Int64] = [:]
+    var isCorrectable = true
+    var stateTitle = ""
 }
 
 enum ReportKind: String, Sendable { case daily, weekly }
@@ -46,13 +49,17 @@ struct ReviewReport: Equatable, Sendable {
     var markdown: String
     let updatedAt: Date
     var sources: [ReviewEvidence]
+    var version: Int64?
+    var isEdited = false
+    var needsReview = false
 }
 
 struct ReviewQuery: Equatable, Sendable {
     var date: Date
     var kind: ReportKind?
     var interval: DateInterval {
-        let calendar = Calendar.current
+        var calendar = kind == .weekly ? Calendar(identifier: .iso8601) : Calendar.current
+        calendar.timeZone = .current
         return calendar.dateInterval(of: kind == .weekly ? .weekOfYear : .day, for: date)!
     }
 }
@@ -60,6 +67,13 @@ struct ReviewQuery: Equatable, Sendable {
 struct ReviewSnapshot: Sendable {
     var events: [ReviewEvent] = []
     var report: ReviewReport?
+    var candidates: [ReviewReportCandidate] = []
+}
+
+struct ReviewReportCandidate: Identifiable, Equatable, Sendable {
+    let id: String
+    let markdown: String
+    let createdAt: Date
 }
 
 struct ReviewCapabilities: Sendable {
@@ -70,6 +84,7 @@ struct ReviewCapabilities: Sendable {
     var openEvidence = false
     var configure = false
     var checkUpdates = false
+    var generateReport = false
 }
 
 struct SourcePreference: Identifiable, Equatable, Sendable {
@@ -100,9 +115,17 @@ struct ReviewPreferences: Equatable, Sendable {
 
 /// Errors shown to users are intentionally bounded. Backend errors may contain capture content or secrets.
 enum ReviewServiceError: Error, LocalizedError {
-    case unavailable, failed, conflict
+    case unavailable, failed, conflict, notConfigured, noEvidence, paused, sourcesDisabled, unsupportedImages, credentials, cancelled, invalidConfiguration
     var errorDescription: String? {
         switch self {
+        case .notConfigured: "请先在设置中配置并选定分析 Provider。"
+        case .noEvidence: "此时段没有可用记录，请选择其他日期或先采集记录。"
+        case .paused: "采集已暂停或停止，分析不会发送内容。继续采集后可重试。"
+        case .sourcesDisabled: "所有分析来源已关闭，旧记录仍可查看。"
+        case .unsupportedImages: "选定的 Provider 不支持截图。可选择支持图片的模型，或只启用历史来源。"
+        case .credentials: "Provider 凭据不可用，请在设置中检查 Keychain 凭据或选定的 CLI 登录目录。"
+        case .cancelled: "操作已取消，原有报告保持不变。"
+        case .invalidConfiguration: "Provider 配置无效，请检查 URL、模型、程序路径和认证方式。"
         case .unavailable: "服务尚未连接。请稍后重试。"
         case .failed: "操作未完成。原有内容已保留，请重试。"
         case .conflict: "内容已在其他位置更新。请保留当前草稿后重新载入。"

@@ -1,10 +1,12 @@
 import AppKit
 import DayreedCore
+import DayreedUpdate
 import SwiftUI
 
 /// A test-only app uses the production adapter against an isolated synthetic environment.
 @main struct LivePreviewApp: App {
     @NSApplicationDelegateAdaptor(LivePreviewDelegate.self) private var delegate
+    private let updater = UpdateController()
     private let service: LiveReviewService
     private let directory: URL
     private let suite: String
@@ -50,7 +52,7 @@ import SwiftUI
                 } catch { failure = true }
             }
         }.defaultSize(width: 1080, height: 720)
-        Settings { SettingsView(service: service) }
+        Settings { SettingsView(service: service, updater: updater) }
     }
 
     @MainActor private static func image() -> Data {
