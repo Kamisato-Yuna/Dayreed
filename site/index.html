@@ -1,0 +1,517 @@
+<!doctype html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="theme-color" content="#f8fbff" />
+        <meta
+            name="description"
+            content="Dayreed 是面向 macOS 26 的开源个人工作记录与回顾工具。本地优先，自选采集与 AI，通过时间线、日报、周报找回自己的工作节奏。"
+        />
+        <meta property="og:title" content="Dayreed · 留住工作的脉络" />
+        <meta
+            property="og:description"
+            content="从时间线到日报、周报，让每一天有迹可循。为 macOS 而生，本地优先，开源生长。"
+        />
+        <meta property="og:type" content="website" />
+        <meta
+            property="og:url"
+            content="https://kamisato-yuna.github.io/Dayreed/"
+        />
+        <meta
+            property="og:image"
+            content="https://kamisato-yuna.github.io/Dayreed/assets/glass-reeds.jpg"
+        />
+        <link rel="canonical" href="https://kamisato-yuna.github.io/Dayreed/" />
+        <link rel="icon" href="assets/reed.svg" type="image/svg+xml" />
+        <link rel="stylesheet" href="styles.css" />
+        <script src="app.js" defer></script>
+        <title>Dayreed · 留住工作的脉络</title>
+    </head>
+    <body>
+        <a class="skip-link" href="#main">跳至正文</a>
+        <svg
+            class="icon-library"
+            xmlns="http://www.w3.org/2000/svg"
+            aria-hidden="true"
+        >
+            <defs>
+                <symbol id="arrow" viewBox="0 0 24 24">
+                    <path d="M5 12h14m-6-6 6 6-6 6" />
+                </symbol>
+                <symbol id="clock" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="9" />
+                    <path d="M12 7v5l3 2" />
+                </symbol>
+                <symbol id="report" viewBox="0 0 24 24">
+                    <path d="M6 3h8l4 4v14H6zM14 3v5h4M9 12h6m-6 4h6" />
+                </symbol>
+                <symbol id="week" viewBox="0 0 24 24">
+                    <path d="M5 20V11m7 9V4m7 16v-6" />
+                </symbol>
+                <symbol id="code" viewBox="0 0 24 24">
+                    <path d="m7 7-5 5 5 5m10-10 5 5-5 5m-3-13-4 20" />
+                </symbol>
+                <symbol id="chevron" viewBox="0 0 24 24">
+                    <path d="m6 9 6 6 6-6" />
+                </symbol>
+                <symbol id="lock" viewBox="0 0 24 24">
+                    <rect x="5" y="10" width="14" height="11" rx="3" />
+                    <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+                </symbol>
+                <symbol id="spark" viewBox="0 0 24 24">
+                    <path
+                        d="m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5Z"
+                    />
+                </symbol>
+                <symbol id="window" viewBox="0 0 24 24">
+                    <rect x="3" y="4" width="18" height="16" rx="3" />
+                    <path d="M3 9h18M8 9v11" />
+                </symbol>
+                <symbol id="github" viewBox="0 0 24 24">
+                    <path
+                        d="M9 19c-4 1-4-2-6-2m12 5v-4a3.5 3.5 0 0 0-1-3c3-.3 6-1.5 6-6a4.5 4.5 0 0 0-1.3-3.2A4.3 4.3 0 0 0 18.5 2S17 1.7 14 3a11 11 0 0 0-5 0C6 1.7 4.5 2 4.5 2a4.3 4.3 0 0 0-.2 3.8A4.5 4.5 0 0 0 3 9c0 4.5 3 5.7 6 6a3.5 3.5 0 0 0-1 3v4"
+                    />
+                </symbol>
+            </defs>
+        </svg>
+        <header class="site-header">
+            <a class="brand" href="#" aria-label="Dayreed 首页"
+                ><img
+                    src="assets/reed.svg"
+                    width="36"
+                    height="36"
+                    alt=""
+                /><span>Dayreed</span></a
+            >
+            <nav aria-label="主导航">
+                <a href="#philosophy">理念</a><a href="#experience">体验</a
+                ><a href="#releases">发布</a
+                ><a
+                    class="nav-github"
+                    href="https://github.com/Kamisato-Yuna/Dayreed"
+                    >GitHub
+                    <svg class="icon" aria-hidden="true">
+                        <use href="#arrow" /></svg
+                ></a>
+            </nav>
+        </header>
+        <main id="main">
+            <section class="hero" aria-labelledby="hero-heading">
+                <div class="hero-copy">
+                    <h1 id="hero-heading">
+                        留住工作的脉络。<br /><span>找回自己的节奏。</span>
+                    </h1>
+                    <p class="hero-description">
+                        为 macOS 而生的个人工作记录与回顾工具。<br />从时间线到日报、周报，让每一天有迹可循。
+                    </p>
+                    <div class="actions">
+                        <a class="button primary" href="#experience"
+                            >探索 Dayreed
+                            <svg class="icon" aria-hidden="true">
+                                <use href="#arrow" /></svg></a
+                        ><a
+                            class="button secondary"
+                            href="https://github.com/Kamisato-Yuna/Dayreed"
+                            >查看源代码</a
+                        >
+                    </div>
+                    <p class="compatibility">
+                        macOS 26+ <span>·</span> 开源 <span>·</span> 本地优先
+                    </p>
+                </div>
+                <div class="experience" id="experience">
+                    <div class="light-field" aria-hidden="true"></div>
+                    <div class="app-window" id="app-preview">
+                        <aside class="app-sidebar">
+                            <div class="traffic-lights" aria-hidden="true">
+                                <i></i><i></i><i></i>
+                            </div>
+                            <div
+                                class="tabs"
+                                role="tablist"
+                                aria-label="产品功能演示"
+                            >
+                                <button
+                                    id="tab-timeline"
+                                    class="tab active"
+                                    role="tab"
+                                    aria-selected="true"
+                                    aria-controls="panel-timeline"
+                                    data-view="timeline"
+                                >
+                                    <svg class="icon" aria-hidden="true">
+                                        <use href="#clock" /></svg
+                                    >时间线
+                                </button>
+                                <button
+                                    id="tab-daily"
+                                    class="tab"
+                                    role="tab"
+                                    aria-selected="false"
+                                    aria-controls="panel-daily"
+                                    tabindex="-1"
+                                    data-view="daily"
+                                >
+                                    <svg class="icon" aria-hidden="true">
+                                        <use href="#report" /></svg
+                                    >日报
+                                </button>
+                                <button
+                                    id="tab-weekly"
+                                    class="tab"
+                                    role="tab"
+                                    aria-selected="false"
+                                    aria-controls="panel-weekly"
+                                    tabindex="-1"
+                                    data-view="weekly"
+                                >
+                                    <svg class="icon" aria-hidden="true">
+                                        <use href="#week" /></svg
+                                    >周报
+                                </button>
+                            </div>
+                            <div class="sidebar-note">
+                                <img
+                                    src="assets/reed.svg"
+                                    width="22"
+                                    height="22"
+                                    alt=""
+                                /><span>属于你的每一天</span>
+                            </div>
+                        </aside>
+                        <div class="app-content">
+                            <section
+                                id="panel-timeline"
+                                class="demo-panel"
+                                role="tabpanel"
+                                aria-labelledby="tab-timeline"
+                                tabindex="0"
+                            >
+                                <div class="panel-heading">
+                                    <h2>今天的工作脉络</h2>
+                                    <span>9 月 6 日，周日</span>
+                                </div>
+                                <div class="timeline">
+                                    <article class="activity">
+                                        <time>09:30</time>
+                                        <div class="activity-icon blue">
+                                            <svg
+                                                class="icon"
+                                                aria-hidden="true"
+                                            >
+                                                <use href="#report" />
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <h3>梳理产品思路</h3>
+                                            <p>
+                                                梳理需求与用户反馈，明确本周迭代方向与优先级。
+                                            </p>
+                                            <span class="source">应用历史</span>
+                                        </div>
+                                    </article>
+                                    <article class="activity">
+                                        <time>10:45</time>
+                                        <div class="activity-icon green">
+                                            <svg
+                                                class="icon"
+                                                aria-hidden="true"
+                                            >
+                                                <use href="#code" />
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <h3>专注构建</h3>
+                                            <p>
+                                                实现核心功能模块，优化交互细节与性能表现。
+                                            </p>
+                                            <span class="source"
+                                                >应用历史 · 截图</span
+                                            >
+                                        </div>
+                                    </article>
+                                    <article class="activity">
+                                        <time>14:00</time>
+                                        <div class="activity-icon violet">
+                                            <svg
+                                                class="icon"
+                                                aria-hidden="true"
+                                            >
+                                                <use href="#report" />
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <h3>整理与回顾</h3>
+                                            <p>
+                                                整理今日工作成果，记录问题与收获，规划明日计划。
+                                            </p>
+                                            <span class="source">应用历史</span>
+                                        </div>
+                                    </article>
+                                </div>
+                            </section>
+                            <section
+                                id="panel-daily"
+                                class="demo-panel"
+                                role="tabpanel"
+                                aria-labelledby="tab-daily"
+                                tabindex="0"
+                                hidden
+                            >
+                                <div class="panel-heading">
+                                    <h2>把今天，写成自己的话</h2>
+                                    <span>日报 · 演示</span>
+                                </div>
+                                <div class="report-paper">
+                                    <p class="report-date">
+                                        9 月 6 日 · 工作回顾
+                                    </p>
+                                    <h3>从想法，到可以触碰的体验。</h3>
+                                    <p>
+                                        今天梳理了产品方向，完成核心界面的构建，并留出时间回看交互中的细节。
+                                    </p>
+                                    <div class="report-rule"></div>
+                                    <h4>留下的思考</h4>
+                                    <p>
+                                        记录的意义，是让下一次开始更从容。明天继续完善回顾流程，让信息回到它应在的位置。
+                                    </p>
+                                    <span class="paper-note"
+                                        >在 App 中可编辑
+                                        Markdown；重新生成先审阅候选。</span
+                                    >
+                                </div>
+                            </section>
+                            <section
+                                id="panel-weekly"
+                                class="demo-panel"
+                                role="tabpanel"
+                                aria-labelledby="tab-weekly"
+                                tabindex="0"
+                                hidden
+                            >
+                                <div class="panel-heading">
+                                    <h2>拉远一点，看见这一周</h2>
+                                    <span>周报 · 演示</span>
+                                </div>
+                                <div class="report-paper">
+                                    <p class="report-date">
+                                        8 月 31 日 — 9 月 6 日
+                                    </p>
+                                    <h3>让零散的进展，连成一条线。</h3>
+                                    <div class="week-flow">
+                                        <span>梳理方向</span
+                                        ><svg class="icon" aria-hidden="true">
+                                            <use href="#arrow" /></svg
+                                        ><span>专注构建</span
+                                        ><svg class="icon" aria-hidden="true">
+                                            <use href="#arrow" /></svg
+                                        ><span>回顾修订</span>
+                                    </div>
+                                    <h4>本周回顾</h4>
+                                    <p>
+                                        从需求整理到核心体验，再到细节修订。把值得保留的思考，带入下一周。
+                                    </p>
+                                    <span class="paper-note"
+                                        >在 App
+                                        中按本机时区回顾整周，也可以手动编写报告。</span
+                                    >
+                                </div>
+                            </section>
+                        </div>
+                    </div>
+                    <p class="demo-caption">
+                        演示数据 · 功能示意，非真实截图
+                        <span>点击切换，感受回顾的不同视角</span>
+                    </p>
+                </div>
+            </section>
+            <section
+                class="philosophy section-shell"
+                id="philosophy"
+                aria-labelledby="philosophy-heading"
+            >
+                <div class="philosophy-top">
+                    <div class="philosophy-copy reveal">
+                        <p class="section-index">
+                            <span>01</span> / 为自己留下记录
+                        </p>
+                        <h2 id="philosophy-heading">
+                            工作有痕，<br />回顾有据。
+                        </h2>
+                        <p>
+                            截图与应用历史，由你独立选择。<br />时间线串起工作片段，<br />日报和周报留住思考。
+                        </p>
+                        <div class="reed-quote">
+                            <img
+                                src="assets/reed.svg"
+                                width="56"
+                                height="56"
+                                alt=""
+                            />
+                            <p>像芦苇一样，<br />在自己的节奏里生长。</p>
+                        </div>
+                    </div>
+                    <div class="steps reveal">
+                        <details open>
+                            <summary>
+                                <span class="step-number">1</span
+                                ><span
+                                    ><strong>选择记录</strong
+                                    ><small
+                                        >来源默认关闭，按需开启。</small
+                                    ></span
+                                ><svg class="icon" aria-hidden="true">
+                                    <use href="#chevron" />
+                                </svg>
+                            </summary>
+                            <p>
+                                截图和应用历史独立选择，窗口标题与辅助功能文本也由你控制。随时暂停，为不想记录的应用留白。
+                            </p>
+                        </details>
+                        <details>
+                            <summary>
+                                <span class="step-number">2</span
+                                ><span
+                                    ><strong>回顾与修订</strong
+                                    ><small
+                                        >报告可以编辑，重新生成先审阅。</small
+                                    ></span
+                                ><svg class="icon" aria-hidden="true">
+                                    <use href="#chevron" />
+                                </svg>
+                            </summary>
+                            <p>
+                                回到时间线，纠正活动标题与摘要；将想法写进日报、周报。重新生成先产生候选，由你决定是否替换。
+                            </p>
+                        </details>
+                        <details>
+                            <summary>
+                                <span class="step-number">3</span
+                                ><span
+                                    ><strong>连接自己的 Agent</strong
+                                    ><small
+                                        >通过只读 CLI / MCP 查询摘要。</small
+                                    ></span
+                                ><svg class="icon" aria-hidden="true">
+                                    <use href="#chevron" />
+                                </svg>
+                            </summary>
+                            <p>
+                                让你正在使用的 Agent
+                                读取时间线与报告。接口只读，不提供修改或原始证据工具；App
+                                内不另设 Chat。
+                            </p>
+                        </details>
+                    </div>
+                </div>
+                <div class="principles reveal">
+                    <article>
+                        <div class="principle-icon">
+                            <svg class="icon" aria-hidden="true">
+                                <use href="#lock" />
+                            </svg>
+                        </div>
+                        <div>
+                            <h3>本地优先</h3>
+                            <p>
+                                本地存储，无需账号。<br />没有遥测，也没有多设备同步。
+                            </p>
+                        </div>
+                    </article>
+                    <article>
+                        <div class="principle-icon">
+                            <svg class="icon" aria-hidden="true">
+                                <use href="#spark" />
+                            </svg>
+                        </div>
+                        <div>
+                            <h3>自选 AI</h3>
+                            <p>
+                                仅向你选定的 Provider<br />发送启用来源，自动分析默认关闭。
+                            </p>
+                        </div>
+                    </article>
+                    <article>
+                        <div class="principle-icon">
+                            <svg class="icon" aria-hidden="true">
+                                <use href="#window" />
+                            </svg>
+                        </div>
+                        <div>
+                            <h3>原生 macOS</h3>
+                            <p>为 macOS 26 的<br />Liquid Glass 而生。</p>
+                        </div>
+                    </article>
+                </div>
+            </section>
+            <section
+                class="release-section section-shell reveal"
+                id="releases"
+                aria-labelledby="release-heading"
+            >
+                <div class="release-glass">
+                    <img
+                        class="release-art"
+                        src="assets/glass-reeds.jpg"
+                        alt=""
+                        width="1536"
+                        height="1024"
+                        loading="lazy"
+                    />
+                    <div class="release-copy">
+                        <p class="section-index"><span>02</span> / 开放生长</p>
+                        <h2 id="release-heading">
+                            和 Dayreed，<br />慢慢生长。
+                        </h2>
+                        <p id="release-status" aria-live="polite">
+                            版本与下载信息请以 GitHub Releases 为准。
+                        </p>
+                        <div id="release-meta" hidden></div>
+                        <a
+                            id="release-link"
+                            class="button primary"
+                            href="https://github.com/Kamisato-Yuna/Dayreed/releases"
+                            ><svg class="icon" aria-hidden="true">
+                                <use href="#github" /></svg
+                            ><span>查看 GitHub Releases</span></a
+                        ><a
+                            class="progress-link"
+                            href="https://github.com/Kamisato-Yuna/Dayreed/issues"
+                            >查看开发进展
+                            <svg class="icon" aria-hidden="true">
+                                <use href="#arrow" /></svg
+                        ></a>
+                    </div>
+                </div>
+                <p class="release-footnote">
+                    正式制品仅来自本仓库
+                    Releases。当前功能仍在持续验证和完善。<span
+                        id="release-checked"
+                    ></span>
+                </p>
+            </section>
+        </main>
+        <footer class="site-footer section-shell">
+            <a class="brand" href="#"
+                ><img
+                    src="assets/reed.svg"
+                    width="30"
+                    height="30"
+                    alt=""
+                /><span>Dayreed</span></a
+            >
+            <p>留住每一天的脉络。</p>
+            <nav aria-label="项目与作者">
+                <a href="https://github.com/Kamisato-Yuna/Dayreed"
+                    >项目 GitHub</a
+                ><a href="https://github.com/Kamisato-Yuna"
+                    >作者 Kamisato-Yuna</a
+                ><a
+                    href="https://github.com/Kamisato-Yuna/Dayreed/blob/main/LICENSE"
+                    >MIT License</a
+                >
+            </nav>
+        </footer>
+    </body>
+</html>

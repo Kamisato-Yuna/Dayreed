@@ -1,0 +1,38 @@
+name: Product Pages
+on:
+  push:
+    branches: [main]
+    paths: ["site/**", "script/build_site.py", ".github/workflows/pages.yml"]
+  release:
+    types: [published, edited, deleted, unpublished]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: product-pages
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/configure-pages@v5
+      - name: Build site with current release information
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 script/build_site.py
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: build/site
+      - uses: actions/deploy-pages@v4
+        id: deployment
