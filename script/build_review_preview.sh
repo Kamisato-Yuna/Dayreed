@@ -9,7 +9,7 @@ mkdir -p "$APP_DIR/Contents/MacOS" "$APP_DIR/Contents/Resources"
 UI_SOURCES=()
 while IFS= read -r file; do UI_SOURCES+=("$file"); done < <(rg --files Sources/DayreedApp | sort | sed '/\/App\/DayreedApp.swift$/d')
 swiftc -parse-as-library -swift-version 6 -target "$(uname -m)-apple-macosx26.0" \
-  -I "$BIN_DIR" -L "$BIN_DIR" -lDayreedCore "${UI_SOURCES[@]}" \
+  -I "$BIN_DIR" -L "$BIN_DIR" -lDayreedCore -lDayreedCapture "${UI_SOURCES[@]}" \
   Tests/DayreedUITests/SyntheticReviewService.swift Tests/DayreedUITests/ReviewPreviewApp.swift \
   -o "$APP_DIR/Contents/MacOS/DayreedReviewPreview"
 python3 - "$APP_DIR" <<'PY'

@@ -46,6 +46,12 @@ import Foundation
         service.shouldFail = true
         await settings.save()
         precondition(settings.isDirty && settings.failed && settings.saved.sources.allSatisfy { !$0.enabled })
+        service.deferLoads = false
+        service.shouldFail = false
+        await store.reload()
+        store.draft = "保留删除期间的手工草稿"
+        await store.refreshAfterDeletion()
+        precondition(store.snapshot.events.isEmpty && store.snapshot.report == nil && store.isDirty && store.draft == "保留删除期间的手工草稿")
         print("PASS: failed save preserves draft; errors redact backend details; dirty navigation blocks; successful save; in-flight edit preserved; stale load ignored; unconnected empty; collection and Agent default off; failed settings remain unapplied")
     }
 }

@@ -92,6 +92,8 @@ struct ReviewPreferences: Equatable, Sendable {
     var agentEnabled = false
     var agentAllowsChanges = false
     var agentIncludesRawContent = false
+    var intervalSeconds = 60
+    var excludedApplications = ""
     var retentionDays = 30
     var status = "采集服务尚未连接。所有来源默认关闭。"
 }

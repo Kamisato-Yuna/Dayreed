@@ -99,6 +99,18 @@ final class ReviewStore {
         do { try await service.open(evidence: evidence) } catch { fail(error) }
     }
 
+    func refreshAfterDeletion() async {
+        // A deleted event/evidence must disappear even if a report has a local unsaved draft.
+        if isDirty {
+            loadSequence += 1
+            snapshot = ReviewSnapshot()
+            savedDraft = ""
+            isLoading = false
+            loaded = true
+            message = "本地记录已删除。未保存的手工草稿仍留在编辑器，可自行保存或放弃。"
+        } else { await reload() }
+    }
+
     func discardDraft() { draft = savedDraft }
 
     private func accept(_ snapshot: ReviewSnapshot) {

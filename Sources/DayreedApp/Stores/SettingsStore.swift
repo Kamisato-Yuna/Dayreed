@@ -22,10 +22,11 @@ final class SettingsStore {
         guard service.capabilities.configure, !isWorking, isDirty else { return }
         isWorking = true
         message = nil
+        let submitted = draft
         defer { isWorking = false }
         do {
-            saved = try await service.save(preferences: draft)
-            draft = saved
+            saved = try await service.save(preferences: submitted)
+            if draft == submitted { draft = saved }
             failed = false
             message = "设置已保存"
         } catch { showFailure() }

@@ -13,9 +13,10 @@ struct DayreedApp: App {
     @State private var reviewStore: ReviewStore
 
     init() {
-        let service = UnconnectedReviewService()
+        let service = LiveReviewService()
         self.service = service
         _reviewStore = State(initialValue: ReviewStore(service: service))
+        Task { _ = try? await service.prepare() }
     }
 
     var body: some Scene {

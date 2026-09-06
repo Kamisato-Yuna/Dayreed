@@ -35,6 +35,7 @@ struct ContentView: View {
                 .navigationSubtitle(subtitle)
                 .toolbar { dateToolbar }
         }
+        .onChange(of: (store.service as? LiveReviewService)?.revision) { _, _ in Task { await store.refreshAfterDeletion() } }
         .task { await store.navigate(to: query(for: section, date: store.query.date)) }
         .confirmationDialog("保留未保存的修改？", isPresented: $showDiscard, titleVisibility: .visible) {
             Button("放弃修改并继续", role: .destructive) {

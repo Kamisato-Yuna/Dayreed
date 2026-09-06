@@ -69,12 +69,15 @@ struct SettingsView: View {
             Button("应用") { Task { await store.save() } }
             Button("取消", role: .cancel) { }
         } message: {
-            Text("启用的来源：\(enabledSources)。Provider 仅可分析这些来源。Agent \(store.draft.agentAllowsChanges ? "允许修改" : "保持只读")，\(store.draft.agentIncludesRawContent ? "允许输出原始内容" : "不输出原始内容")。系统权限仍由你决定。")
+            Text("启用的来源：\(enabledSources)。Provider 仅可分析这些来源。Agent 1.0 只读且不提供原文工具。保留 \(store.draft.retentionDays) 天；到期记录及关联内容会自动清除。系统权限仍由你决定。")
         }
     }
 
     private var enabledSources: String {
-        let titles = store.draft.sources.filter(\.enabled).map { $0.source.title }
+        let history = store.draft.sources.first { $0.source == .application }?.enabled == true
+        let titles = store.draft.sources.filter {
+            $0.enabled && (history || $0.source == .screenshot)
+        }.map { $0.source.title }
         return titles.isEmpty ? "全部关闭" : titles.joined(separator: "、")
     }
     @ViewBuilder private var general: some View {
@@ -107,11 +110,17 @@ struct SettingsView: View {
         Section("采集来源") {
             ForEach($store.draft.sources) { $source in
                 Toggle(isOn: $source.enabled) {
-                    Label(source.source.title, systemImage: source.source.symbol)
-                    Text("权限：\(source.permission)").font(.caption).foregroundStyle(.secondary)
+                    Label(source.source == .application ? "应用历史（总开关）" : source.source.title, systemImage: source.source.symbol)
+
                 }
             }.disabled(!store.service.capabilities.configure || store.isWorking)
         }
+        Section("采样与排除") {
+            Stepper("采样间隔：\(store.draft.intervalSeconds) 秒", value: $store.draft.intervalSeconds, in: 5...3600, step: 5)
+            TextField("排除的应用 Bundle ID（每行一个）", text: $store.draft.excludedApplications, axis: .vertical).lineLimit(3...6)
+            Text("窗口标题和辅助功能文本仅在应用历史总开关启用时采集；各自也可独立关闭。截图与历史独立。").font(.caption).foregroundStyle(.secondary)
+        }.disabled(!store.service.capabilities.configure || store.isWorking)
+        if let live = store.service as? LiveReviewService { CaptureControlView(service: live) }
         Section("保留时间") {
             Picker("原始内容保留", selection: $store.draft.retentionDays) {
                 Text("7 天").tag(7)
@@ -145,15 +154,10 @@ struct SettingsView: View {
         }
     }
     @ViewBuilder private var agent: some View {
-        Section("本机 Agent") {
-            Toggle("允许 Agent 访问", isOn: $store.draft.agentEnabled)
-            Text("默认关闭。启用后默认只读，不输出原始截图或原始文本。").font(.caption).foregroundStyle(.secondary)
-        }.disabled(!store.service.capabilities.configure || store.isWorking)
-        Section("访问范围") {
-            Toggle("允许修改整理结果", isOn: $store.draft.agentAllowsChanges)
-            Toggle("允许输出原始内容", isOn: $store.draft.agentIncludesRawContent)
-            Text("扩大范围会增加可访问的数据。应用设置前将再次列出你的选择。").font(.caption).foregroundStyle(.secondary)
-        }.disabled(!store.service.capabilities.configure || !store.draft.agentEnabled || store.isWorking)
+        Section("只读 CLI / MCP") {
+            Text("Agent 1.0 可查询时间线、日报、周报和状态，不提供修改或原始证据工具。")
+            Text("显式运行 CLI 无需额外启用开关。安装脚本位于项目 script/install_cli.sh；正式 App 中的入口将随集成提供。").font(.callout).foregroundStyle(.secondary)
+        }
     }
     @ViewBuilder private var updates: some View {
         Section("应用更新") {
