@@ -30,8 +30,17 @@ jobs:
         run: |
           swift build
           swift test
+      - name: Verify review state and safe local integrations
+        run: |
+          ./script/test_review_ui.sh
+          ./Tests/DayreedUITests/test_live_services.sh
+          ./Tests/DayreedUITests/test_live_preview_samples.sh
+          ./Tests/Scripts/install_cli.sh
+          python3 Tests/Scripts/test_mcp.py "$(swift build --show-bin-path)/dayreed"
       - name: Package app and verify CLI metadata
         run: |
           ./script/build_app.sh debug
           build/debug/Dayreed.app/Contents/Helpers/dayreed status --json
           plutil -lint build/debug/Dayreed.app/Contents/Info.plist
+          python3 Tests/Scripts/test_release.py
+          python3 Tests/Scripts/test_dmg.py

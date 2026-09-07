@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+    <key>SUFeedURL</key><string>https://github.com/Kamisato-Yuna/Dayreed/releases/latest/download/appcast.xml</string>
+    <key>SUPublicEDKey</key><string>cgBdOUMR3Vdw+A5GfSTcKTIlB69sniFZ7j/UGj81wxg=</string>
+    <key>SUDefaultsDomain</key><string>YunaBuild.Dayreed.Sparkle</string>
+    <key>SUEnableAutomaticChecks</key><false/>
+    <key>SUAutomaticallyUpdate</key><false/>
+    <key>SUAllowsAutomaticUpdates</key><false/>
+    <key>SUEnableSystemProfiling</key><false/>
+    <key>SUSendProfileInfo</key><false/>
+    <key>SUShowReleaseNotes</key><false/>
+    <key>SUEnableJavaScript</key><false/>
+    <key>SURequireSignedFeed</key><true/>
+    <key>SUVerifyUpdateBeforeExtraction</key><true/>
+    <key>SUSignedFeedFailureExpirationInterval</key><integer>0</integer>
+</dict></plist>

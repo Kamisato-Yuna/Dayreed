@@ -5,7 +5,7 @@
 
 个人工作记录与回顾工具，面向 macOS 26。用原生界面检查时间线、日报和周报，通过本地 CLI/MCP 向本人使用的 Agent 提供记录。
 
-**目前处于全新开发阶段，尚无正式可用版本。** 已提供原生导航与设置外壳、App 打包入口和 CLI 版本/能力查询；采集、持久化、报告、MCP、正式 VI 与自动更新尚未接入。界面不显示虚构记录，CLI 会明确报告未实现的能力。
+**[0.1.0 已公开发布](https://github.com/Kamisato-Yuna/Dayreed/releases/tag/v0.1.0)，仍是早期版本。** 已实现独立多源采集、SQLite 证据存储、原生回顾界面、可编辑日报周报和只读 CLI/MCP；正式图标由 Icon Composer 分层制作，更新与签名分发工具仅面向本仓库。已接入 OpenAI 兼容接口及 Codex/Claude CLI 分析 Provider，自动分析需单独开启。受控样本已完成真实采集、Provider 分析、报告保存和安装更新验证；不同应用、Provider 与设备组合仍需持续验证，已实现功能不代表达到 1.0 的可用性。
 
 ## 产品方向
 
@@ -18,7 +18,7 @@
 
 ## 开发
 
-需要 macOS 26+、Xcode 26+（Swift 6.2+），并将命令行工具指向相应 Xcode。
+需要 macOS 26+、支持 Icon Composer 的 Xcode 26+（Swift 6.2+），并将命令行工具指向相应 Xcode。
 
 ```sh
 swift build
@@ -32,6 +32,10 @@ GUI 应通过生成的 `build/debug/Dayreed.app` 启动，避免直接运行 Swi
 ```text
 Sources/DayreedApp/    原生 App、页面与设置
 Sources/DayreedCore/   App 与 CLI 共享的本地能力
+Sources/DayreedCapture/ 独立截图与计算机历史采集
+Sources/DayreedAnalysis/ 用户选定 Provider 与自动分析
+Sources/DayreedAgent/  只读查询与 stdio MCP
+Sources/DayreedUpdate/ 本仓库签名更新
 Sources/DayreedCLI/    命令行入口
 Tests/                有关本轮实现的测试
 script/               构建、运行与公证工具
@@ -40,8 +44,23 @@ docs/                 对外使用和维护文档
 
 临时计划、实验、验收记录放入被忽略的 `docs/local/`；Agent 配置、构建产物和凭据也不进入 Git。旧 Dayflow 仓库已退役，仅作参考；此仓库使用独立历史、身份和目录，不自动访问或迁移旧应用数据。
 
+## 安装
+
+从本仓库 [v0.1.0 Release](https://github.com/Kamisato-Yuna/Dayreed/releases/tag/v0.1.0) 下载 `Dayreed-0.1.0.dmg`，打开后将 `Dayreed.app` 拖入 `Applications`（应用程序），再从应用程序启动。当前发布为 Apple silicon、macOS 26+、0.1.0 build 2。更新已有版本前先退出旧 App。DMG 是手动安装包；App 内自动更新使用同一 Release 的签名 ZIP 和 appcast。
+
+系统权限和目标应用的辅助功能支持会影响采集内容；AX 部分文本已取得时，整体质量仍可能显示不可用。系统权限改变后可能需要重新打开 App。本机 GUI 验收使用 macOS 27，macOS 26 完成 CI 构建与测试；详见 [0.1 验收范围](docs/ACCEPTANCE_0.1.md)。
+
+## 使用说明
+
+- [App 回顾与设置](docs/APP_GUIDE.md)
+- [采集、隐私与本地存储](docs/CAPTURE_AND_STORAGE.md)
+- [时间线与可编辑报告](docs/REPORTS_AND_QUERY.md)
+- [分析 Provider 配置](docs/ANALYSIS_PROVIDERS.md)
+- [CLI 安装与 MCP 配置](docs/AGENT.md)
+- [Icon Composer 图标源与编译](Resources/Branding/README.md)
+
 ## 参与与发布
 
-由 [@Kamisato-Yuna](https://github.com/Kamisato-Yuna) 个人维护。请先阅读 [贡献指南](CONTRIBUTING.md)、[安全说明](SECURITY.md)和[发布说明](docs/RELEASING.md)。功能计划通过 Issues 和 1.0 milestone 管理。
+由 [@Kamisato-Yuna](https://github.com/Kamisato-Yuna) 个人维护。请先阅读 [贡献指南](CONTRIBUTING.md)、[安全说明](SECURITY.md)和[发布说明](docs/RELEASING.md)。功能计划通过 Issues 和 0.1 milestone 管理。
 
-代码使用 [MIT License](LICENSE)。今后如引入第三方代码或资源，保留相应版权和许可说明。
+代码使用 [MIT License](LICENSE)。Sparkle 使用其独立许可，分发包保留相应版权和许可说明。
