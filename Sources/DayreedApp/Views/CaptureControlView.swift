@@ -21,9 +21,9 @@ struct CaptureControlView: View {
                     Button("继续") { control(.resume) }.disabled(coordinator.state.mode != .paused)
                     Button("停止") { control(.stop) }.disabled(coordinator.state.mode == .stopped)
                 }.disabled(working || service.deletionInProgress || service.isTransitioning)
-                LabeledContent("屏幕录制权限", value: permission(coordinator.state.permissions.screenRecording))
+                LabeledContent("屏幕录制权限", value: coordinator.state.hasCheckedPermissions ? permission(coordinator.state.permissions.screenRecording) : "尚未检查")
                 Button("申请屏幕录制权限") { control(.screenPermission) }
-                LabeledContent("辅助功能权限", value: permission(coordinator.state.permissions.accessibility))
+                LabeledContent("辅助功能权限", value: coordinator.state.hasCheckedPermissions ? permission(coordinator.state.permissions.accessibility) : "尚未检查")
                 Button("申请辅助功能权限") { control(.accessibilityPermission) }
                 Button("刷新权限状态") { control(.refreshPermissions) }
                 Text("权限申请只由对应按钮触发。授予屏幕录制权限后，系统可能要求重新打开应用。").font(.caption).foregroundStyle(.secondary)

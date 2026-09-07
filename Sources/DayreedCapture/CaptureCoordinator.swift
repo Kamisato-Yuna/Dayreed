@@ -9,6 +9,7 @@ public enum CaptureMode: String, Sendable {
 public struct CaptureState: Equatable, Sendable {
     public internal(set) var mode: CaptureMode = .stopped
     public internal(set) var permissions = CapturePermissions()
+    public internal(set) var hasCheckedPermissions = false
     public internal(set) var qualities = SourceQualities()
     public internal(set) var lastRecordID: UUID?
     public internal(set) var storageFailed = false
@@ -114,6 +115,7 @@ public final class CaptureCoordinator {
     /// Queries only; the OS does not reliably distinguish denied from not yet requested.
     public func refreshPermissions() {
         let permissions = environment.permissions()
+        state.hasCheckedPermissions = true
         if permissions != state.permissions { invalidate() }
         state.permissions = permissions
     }
