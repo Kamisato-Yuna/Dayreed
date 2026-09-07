@@ -54,6 +54,13 @@ final class ReviewStore {
         }
     }
 
+    func refreshAfterCapture() async {
+        // New observations update the timeline, not saved reports. Rebuilding a report
+        // here also destroys its editor mode and any open candidate-review sheet.
+        guard query.kind == nil else { return }
+        await reload()
+    }
+
     func save() async {
         guard service.capabilities.saveReport, !isWorking, !isLoading, isDirty else { return }
         isWorking = true
