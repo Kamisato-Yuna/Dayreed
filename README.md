@@ -5,7 +5,7 @@
 
 个人工作记录与回顾工具，面向 macOS 26。用原生界面检查时间线、日报和周报，通过本地 CLI/MCP 向本人使用的 Agent 提供记录。
 
-**0.1 是早期开发版本，尚无正式 Release。** 已实现独立多源采集、SQLite 证据存储、原生回顾界面、可编辑日报周报和只读 CLI/MCP；正式图标由 Icon Composer 分层制作，更新与签名分发工具仅面向本仓库。已接入 OpenAI 兼容接口及 Codex/Claude CLI 分析 Provider，自动分析需单独开启。真实采集、Provider 配置与分析体验、安装更新仍需持续验证和完善；已实现功能不代表达到 1.0 的可用性。
+**[0.1.0 已公开发布](https://github.com/Kamisato-Yuna/Dayreed/releases/tag/v0.1.0)，仍是早期版本。** 已实现独立多源采集、SQLite 证据存储、原生回顾界面、可编辑日报周报和只读 CLI/MCP；正式图标由 Icon Composer 分层制作，更新与签名分发工具仅面向本仓库。已接入 OpenAI 兼容接口及 Codex/Claude CLI 分析 Provider，自动分析需单独开启。受控样本已完成真实采集、Provider 分析、报告保存和安装更新验证；不同应用、Provider 与设备组合仍需持续验证，已实现功能不代表达到 1.0 的可用性。
 
 ## 产品方向
 
@@ -46,7 +46,9 @@ docs/                 对外使用和维护文档
 
 ## 安装
 
-从本仓库 Release 下载 `Dayreed-<版本>.dmg`，打开后将 `Dayreed.app` 拖入 `Applications`（应用程序），再从应用程序启动。更新已有版本前先退出旧 App。DMG 是手动安装包；App 内自动更新使用同一 Release 的签名 ZIP 和 appcast。当前尚未创建正式 Release。
+从本仓库 [v0.1.0 Release](https://github.com/Kamisato-Yuna/Dayreed/releases/tag/v0.1.0) 下载 `Dayreed-0.1.0.dmg`，打开后将 `Dayreed.app` 拖入 `Applications`（应用程序），再从应用程序启动。当前发布为 Apple silicon、macOS 26+、0.1.0 build 2。更新已有版本前先退出旧 App。DMG 是手动安装包；App 内自动更新使用同一 Release 的签名 ZIP 和 appcast。
+
+系统权限和目标应用的辅助功能支持会影响采集内容；AX 部分文本已取得时，整体质量仍可能显示不可用。系统权限改变后可能需要重新打开 App。本机 GUI 验收使用 macOS 27，macOS 26 完成 CI 构建与测试；详见 [0.1 验收范围](docs/ACCEPTANCE_0.1.md)。
 
 ## 使用说明
 

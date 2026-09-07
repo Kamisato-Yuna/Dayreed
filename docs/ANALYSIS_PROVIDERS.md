@@ -57,4 +57,4 @@ Claude 的 API Key 模式使用 `--bare`；复用现有登录使用 `--safe-mode
 
 核对依据：[Codex CLI](https://developers.openai.com/codex/cli/reference/)、[Codex 配置](https://developers.openai.com/codex/config-reference/)、[Codex 工具装配源码](https://github.com/openai/codex/blob/main/codex-rs/core/src/tools/spec_plan.rs)、[模型元数据源码](https://github.com/openai/codex/blob/main/codex-rs/protocol/src/openai_models.rs)、[Claude CLI](https://code.claude.com/docs/en/cli-reference)、[Claude 非交互调用](https://code.claude.com/docs/en/headless)。
 
-验证区分：测试只使用临时目录与合成样本，覆盖真实本机 HTTP 传输、原生进程、解析和取消；本机 Codex 加 loopback 合成 Responses 已实测请求 `tools=[]` 并完成。真实远端模型质量、用户认证、真实截图视觉效果和 Claude 安装实例仍需用户明确配置后验收。
+验证区分：自动测试使用临时目录与合成样本，覆盖真实本机 HTTP 传输、原生进程、解析和取消；本机 Codex 加 loopback 合成 Responses 已实测请求 `tools=[]` 并完成。0.1 另已完成 MiniMax 文本/组合合成样本受控请求，以及真实 TextEdit 合成采集到 Qwen 分析、时间线和报告保存。上述结果不代表独立视觉准确率或所有模型质量；用户现有 CLI 登录身份与 Claude 安装实例未验。详见 [0.1 验收范围](ACCEPTANCE_0.1.md)。
