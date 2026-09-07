@@ -40,12 +40,14 @@ extension LiveServiceChecks {
         expect(await provider.calls == 0 && credentials.readCount == 0)
         let query = ReviewQuery(date: .now)
         let day = query.interval.start
+        // Scheduling ends at now; fixed 01:00/02:00 fixtures are future records in early-morning runs.
+        let elapsedToday = query.date.timeIntervalSince(day)
         func append(_ date: Date) throws -> UUID {
             try database.append(CaptureRecordInput(capturedAt: date, trigger: .timer, applicationBundleIdentifier: "test.synthetic",
                 qualities: SourceQualities(application: .available),
                 evidence: [.text("SYNTHETIC_RAW_NOT_SELECTED", kind: .windowTitle), .text("SYNTHETIC_AX_NOT_SELECTED", kind: .accessibilityText)])).id
         }
-        let first = try append(day.addingTimeInterval(3600))
+        let first = try append(day.addingTimeInterval(elapsedToday / 3))
         let pending = try await service.load(query)
         expect(pending.events.first?.summary.contains("尚无分析摘要") == true)
         expect(pending.events.allSatisfy { !$0.summary.contains("选定 Provider") })
@@ -77,7 +79,7 @@ extension LiveServiceChecks {
         snapshot = try await unchanged.value
         expect(snapshot.events.contains { $0.title == "合成整理活动" })
 
-        let lateID = try append(day.addingTimeInterval(7200))
+        let lateID = try append(day.addingTimeInterval(elapsedToday * 2 / 3))
         let late = Task { try await service.regenerate(query) }
         try await eventually { await provider.pending != nil }
         try await service.control(.pause)
@@ -146,10 +148,10 @@ extension LiveServiceChecks {
         print("PASS: selected Provider pending records do not claim missing selection; invalidResponse surfaces and survives reload without annotations; live selection/edit/off/pause/schedule guidance; real Provider settings with memory credentials; explicit selection; enabled-source-only inputs; unchanged capture state does not cancel; pause/off reject late results; opt-in current-day auto analysis without reports; key failure stays visible; shutdown; CLI form validation")
     }
 
-    @MainActor static func eventually(seconds: Double = 3, _ condition: @escaping @MainActor () async throws -> Bool) async throws {
+    @MainActor static func eventually(seconds: Double = 3, file: StaticString = #fileID, line: UInt = #line, _ condition: @escaping @MainActor () async throws -> Bool) async throws {
         let deadline = ContinuousClock.now.advanced(by: .seconds(seconds))
         while try await !condition() {
-            guard ContinuousClock.now < deadline else { preconditionFailure("synthetic operation did not complete") }
+            guard ContinuousClock.now < deadline else { preconditionFailure("synthetic operation did not complete", file: file, line: line) }
             try await Task.sleep(for: .milliseconds(10))
         }
     }
