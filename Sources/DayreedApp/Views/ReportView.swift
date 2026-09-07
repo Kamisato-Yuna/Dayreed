@@ -139,6 +139,8 @@ struct MarkdownPreview: View {
                 else { inline(line) }
             }
         }.font(.body).lineSpacing(6).frame(maxWidth: .infinity, alignment: .leading).textSelection(.enabled)
+            // Recreate selectable text when its content changes so accessibility does not retain old lines.
+            .id(markdown)
     }
     private func inline(_ text: String) -> Text {
         Text((try? AttributedString(markdown: text, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace))) ?? AttributedString(text))
