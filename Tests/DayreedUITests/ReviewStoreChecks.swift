@@ -4,6 +4,24 @@ import Foundation
     @MainActor static func main() async {
         let service = SyntheticReviewService()
         let store = ReviewStore(service: service, date: service.date)
+        let captureService = SyntheticReviewService()
+        let captureStore = ReviewStore(service: captureService, date: captureService.date)
+        for kind in [ReportKind.daily, .weekly] {
+            captureService.shouldFail = false
+            await captureStore.navigate(to: ReviewQuery(date: captureService.date, kind: kind))
+            let report = captureStore.snapshot.report
+            let draft = captureStore.draft
+            captureService.shouldFail = true
+            await captureStore.refreshAfterCapture()
+            precondition(captureStore.loaded && !captureStore.isLoading && captureStore.failure == nil,
+                         "new capture must not reload a report or dismiss its candidate-review UI")
+            precondition(captureStore.snapshot.report?.id == report?.id && captureStore.draft == draft)
+        }
+        captureService.shouldFail = false
+        await captureStore.navigate(to: ReviewQuery(date: captureService.date))
+        captureService.shouldFail = true
+        await captureStore.refreshAfterCapture()
+        precondition(captureStore.failure != nil, "timeline must still refresh after capture")
         await store.reload()
         precondition(store.loaded && store.snapshot.events.count == 1)
         store.selectedEventID = store.snapshot.events[0].id
